@@ -31,5 +31,9 @@ else
   export PRECISION=2
 fi
 
+cd ${AED2DIR}
+make
+cd ${CURDIR}
+
 #make distclean
 make

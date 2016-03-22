@@ -24,8 +24,10 @@ OUTLIB=libtuflowfv_wq_aed
 INCLUDES+=-I${AED2DIR}/include
 ifeq ($(SINGLE),true)
   INCLUDES+=-I${AED2DIR}/mod_s
+  LIBAED2=libaed2_s
 else
   INCLUDES+=-I${AED2DIR}/mod
+  LIBAED2=libaed2
 endif
 
 ifeq ($(F90),ifort)
@@ -74,7 +76,7 @@ all: ${objdir} ${moddir} ${libdir} ${libdir}/$(OUTLIB).a
 
 else
 
-  LDFLAGS += --start-group ${AED2DIR}/lib/libaed2.a --end-group
+  LDFLAGS += --start-group ${AED2DIR}/lib/${LIBAED2}.a --end-group
 
 all: ${objdir} ${moddir} ${libdir} ${libdir}/$(OUTLIB).so
 
