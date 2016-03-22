@@ -1,0 +1,16 @@
+#
+# These are settings used for building libfvaed2 module
+#
+
+export AED2=true
+export USE_DL=true
+export SINGLE=true
+
+export FORTRAN_COMPILER=IFORT
+
+export CURDIR=`pwd`
+
+export TFWQDIR=${CURDIR}/../libfvaed2
+export AED2DIR=${CURDIR}/../libaed2
+
+export FV_CONFIGURED=true

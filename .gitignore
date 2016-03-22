@@ -1,0 +1,9 @@
+*.o
+*.mod
+*.a
+*.so
+*.so.*
+lib
+modules
+libaed2
+.*.swp

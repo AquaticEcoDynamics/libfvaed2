@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectType="typeDynamicLibrary" ProjectCreator="Intel Fortran" Keyword="Dll" Version="11.0" ProjectIdGuid="{DE94B943-D973-4C1E-A427-E3CD39FBA78D}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" OutputDirectory="..\..\lib" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" ConfigurationType="typeDynamicLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(ProjectDir)..\..\..\src;$(ProjectDir)\fabm\$(PlatformName);$(ProjectDir)\aed\$(PlatformName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" WarnInterfaces="true" ModulePath="..\..\modules" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" Interfaces="true"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(OutDir)" IgnoreDefaultLibraryNames="LIBCMT" GenerateDebugInformation="true" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="tuflowfv_aed.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|Win32" OutputDirectory="..\..\lib" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" ConfigurationType="typeDynamicLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" AdditionalIncludeDirectories="$(ProjectDir)..\..\..\src;$(ProjectDir)\fabm\$(PlatformName);$(ProjectDir)\aed\$(PlatformName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" ModulePath="..\..\modules"/>
+				<Tool Name="VFLinkerTool" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(OutDir)" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="tuflowfv_aed.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Debug|x64" OutputDirectory="..\..\lib" ConfigurationType="typeDynamicLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(ProjectDir)..\..\..\src;$(ProjectDir)\fabm\$(PlatformName);$(ProjectDir)\aed\$(PlatformName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" WarnInterfaces="true" ModulePath="..\..\modules" Traceback="true" BoundsCheck="true" Interfaces="true"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(OutDir)" IgnoreDefaultLibraryNames="LIBCMTD" GenerateDebugInformation="true" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="tuflowfv_aed.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|x64" OutputDirectory="..\..\lib" ConfigurationType="typeDynamicLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" AdditionalIncludeDirectories="$(ProjectDir)..\..\..\src;$(ProjectDir)\fabm\$(PlatformName);$(ProjectDir)\aed\$(PlatformName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" ModulePath="..\..\modules"/>
+				<Tool Name="VFLinkerTool" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(OutDir)" IgnoreDefaultLibraryNames="LIBCMTD" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="tuflowfv_aed.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="VTUNE|Win32" OutputDirectory="..\..\lib" ConfigurationType="typeDynamicLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugLineInfoOnly" AdditionalIncludeDirectories="$(ProjectDir)..\..\..\src;$(ProjectDir)\fabm\$(PlatformName);$(ProjectDir)\aed\$(PlatformName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" ModulePath="..\..\modules"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/DLL" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(OutDir)" FixedBaseAddress="linkFixedBaseAddressNo" AdditionalDependencies="tuflowfv_aed.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="VTUNE|x64" OutputDirectory="..\..\lib" ConfigurationType="typeDynamicLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugLineInfoOnly" AdditionalIncludeDirectories="$(ProjectDir)..\..\..\src;$(ProjectDir)\fabm\$(PlatformName);$(ProjectDir)\aed\$(PlatformName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" ModulePath="..\..\modules"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/DLL" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(OutDir)" GenerateDebugInformation="true" FixedBaseAddress="linkFixedBaseAddressNo" AdditionalDependencies="tuflowfv_aed.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd">
+		<File RelativePath="..\..\tuflowfv_external_wq\COMPILER_DIRECTIVES.FI"/></Filter>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath="..\..\tuflowfv_external_wq\tuflowfv_external_wq.f90"/></Filter></Files>
+	<Globals/></VisualStudioProject>

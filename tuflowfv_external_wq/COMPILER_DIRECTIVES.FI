@@ -1,0 +1,106 @@
+! TUFLOWFV COMPILER DIRECTIVES HEADER FILE
+!
+! Copyright 2014 by BMT WBM Pty Ltd under the GNU Public License - www.gnu.org
+
+! Define Build Platform
+! 1=Windows ifort (def), 2=Linux ifort
+!DEC$ IF DEFINED(PLATFORM)
+!DEC$ ELSE
+  !DEC$ DEFINE PLATFORM=1
+!DEC$ END IF
+! Overwrite using predefined preprocessory symbols (if available)
+!DEC$ IF DEFINED (linux)
+  !DEC$ DEFINE PLATFORM=2
+!DEC$ END IF
+
+! Define Build Architecture
+! 1=x86-32 (def), 2=x86-64
+!DEC$ IF DEFINED(ARCH)
+!DEC$ ELSE
+  !DEC$ DEFINE ARCH=1
+!DEC$ END IF
+! Overwrite using predefined preprocessor symbols (if available)
+!DEC$ IF (PLATFORM==1) ! Windows
+  !DEC$ IF DEFINED(_M_IX86)
+    !DEC$ DEFINE ARCH=1
+  !DEC$ ELSEIF DEFINED(_M_X64)
+    !DEC$ DEFINE ARCH=2
+  !DEC$ END IF
+!DEC$ ELSEIF (PLATFORM==2) ! Linux
+  !DEC$ IF DEFINED(__i386)
+    !DEC$ DEFINE ARCH=1
+  !DEC$ ELSEIF DEFINED(__x86_64)
+    !DEC$ DEFINE ARCH=2
+  !DEC$ END IF
+!DEC$ END IF
+  
+! Define Build Precision
+! 1=Single Precison (def), 2=Double Precision, 3+=Undefined
+!DEC$ IF DEFINED(_PRECISION)
+!DEC$ ELSE
+  !DEC$ DEFINE _PRECISION=1
+!DEC$ END IF
+!DEC$ IF (_PRECISION==1) ! Single
+  !DEC$ REAL:4
+  !DEC$ INTEGER:4
+!DEC$ ELSEIF (_PRECISION==2) ! Double
+  !DEC$ REAL:8
+  !DEC$ INTEGER:4
+!DEC$ END IF
+
+! Define Message Passing 
+!!DEC$ DEFINE MPI
+
+! Define Licensing Configuration
+! 0=No dongle protection, 1=WIBU dongle (def)
+!DEC$ IF DEFINED(LICENSE)
+!DEC$ ELSE
+  !DEC$ DEFINE LICENSE=1
+!DEC$ END IF
+!DEC$ IF DEFINED(SMS_DEMO_LICENSE)
+!DEC$ ELSE
+  !DEC$ DEFINE SMS_DEMO_LICENSE=0
+!DEC$ END IF
+!DEC$ IF (ARCH==1) ! x86-32
+  !DEC$ DEFINE FORTRAN_COMPILER=11
+!DEC$ ELSEIF (ARCH==2) ! x86-64
+  !DEC$ DEFINE FORTRAN_COMPILER=21
+!DEC$ END IF
+      
+! Define netcdf4 compatability
+! 0=netcdf classic 64bit_offset, 1=netcdf4 (def)
+!DEC$ IF DEFINED(NETCDF4)
+!DEC$ ELSE
+  !DEC$ DEFINE NETCDF4=1
+!DEC$ END IF
+
+! Define external turbulence library
+! 0=blank, 1=GOTM
+!DEC$ IF DEFINED(EXTERNAL_TURB)
+!DEC$ ELSE
+  !DEC$ DEFINE EXTERNAL_TURB=0
+!DEC$ END IF
+!DEC$ IF (EXTERNAL_TURB==1) ! GOTM
+    !DEC$ DEFINE GOTM
+!DEC$ END IF
+
+! Define external wq library
+! 0=blank (def), 2=AED2
+!DEC$ IF DEFINED(EXTERNAL_WQ)
+!DEC$ ELSE
+  !DEC$ DEFINE EXTERNAL_WQ=0
+!DEC$ END IF
+!DEC$ IF (EXTERNAL_WQ==2) ! AED2
+    !DEC$ DEFINE AED2
+!DEC$ END IF
+
+! Define external wave library
+! 0=blank (def), 1=SWAN
+!DEC$ IF DEFINED(EXTERNAL_WAVE)
+!DEC$ ELSE
+  !DEC$ DEFINE EXTERNAL_WAVE=0
+!DEC$ END IF
+!DEC$ IF (EXTERNAL_WAVE==1) ! SWAN
+    !DEC$ DEFINE SWAN
+!DEC$ END IF
+
