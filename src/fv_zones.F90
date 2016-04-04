@@ -88,6 +88,7 @@ SUBROUTINE init_zones(nCols, mat_id, n_aed2_vars, n_vars, n_vars_ben)
 !-------------------------------------------------------------------------------
 !BEGIN
    ALLOCATE(mat_t(nCols)) ; ALLOCATE(zm(nCols))
+   mat_t = 0.   ; zm = 0.
    !# The new form of zones
    cType = mat_id(1,1) ; nTypes = 1 ; mat_t(nTypes) = mat_id(1,1)
    DO col=1, ubound(mat_id,2)
@@ -124,7 +125,7 @@ SUBROUTINE init_zones(nCols, mat_id, n_aed2_vars, n_vars, n_vars_ben)
    ALLOCATE(zone_tss(nZones))
    ALLOCATE(zone_par(nZones))
    ALLOCATE(zone_wind(nZones))
-   ALLOCATE(zone_rain(nZones)) ! JC
+   ALLOCATE(zone_rain(nZones))
    ALLOCATE(zone_I_0(nZones))
    ALLOCATE(zone_taub(nZones))
 
@@ -159,9 +160,15 @@ SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, 
    zone_area = zero_
    zone_temp = zero_
    zone_salt = zero_
+   zone_rho    = zero_
    zone_height = zero_
+   zone_extc   = zero_
+   zone_tss = zero_
+   zone_par = zero_
    zone_wind = zero_
    zone_rain = zero_ ! JC
+   zone_I_0 = zero_
+   zone_taub = zero_
    zone_count = 0
 
    DO col=1, nCols
@@ -215,6 +222,7 @@ SUBROUTINE copy_to_zone(nCols, cc, area, active, benth_map)
 !
 !-------------------------------------------------------------------------------
 !BEGIN
+   zone_cc(1:nwq_var,zon) = zero_
    DO col=1, nCols
       IF (.NOT. active(col)) CYCLE
 
