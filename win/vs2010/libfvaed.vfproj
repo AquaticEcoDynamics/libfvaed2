@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectType="typeStaticLibrary" ProjectCreator="Intel Fortran" Keyword="Static Library" Version="11.0" ProjectIdGuid="{F521D689-F526-488C-A80A-54FAB6929F85}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="SINGLE=true;PLOTS=false;MPI=OPENMPI" StandardWarnings="standardWarningsF03" Diagnostics="diagnosticsShowAll" WarnInterfaces="true" FloatingPointModel="source" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" StackFrameCheck="true"/>
+				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Release|Win32" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="SINGLE=true;PLOTS=false;MPI=OPENMPI" FloatingPointModel="source"/>
+				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Debug|x64" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="SINGLE=true;PLOTS=false;MPI=OPENMPI" StandardWarnings="standardWarningsF03" Diagnostics="diagnosticsShowAll" WarnInterfaces="true" FloatingPointModel="source" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" StackFrameCheck="true"/>
+				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Release|x64" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="SINGLE=true;PLOTS=false;MPI=OPENMPI"/>
+				<Tool Name="VFLinkerTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd">
+		<File RelativePath="..\..\libaed2\include\aed2.h"/></Filter>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath="..\..\src\fv_aed2.F90"/>
+		<File RelativePath="..\..\src\fv_zones.F90"/></Filter></Files>
+	<Globals/></VisualStudioProject>
