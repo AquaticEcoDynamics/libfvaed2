@@ -56,7 +56,7 @@ MODULE fv_zones
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_tss
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_par
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_wind
-   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_rain ! JC not sure it makes sense
+   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_rain
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_I_0
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_taub
    INTEGER, DIMENSION(:),  ALLOCATABLE        :: zone_count, zm
@@ -144,7 +144,7 @@ END SUBROUTINE init_zones
 
 
 !###############################################################################
-SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, par, tss, active, rain)!, bathy ,rain JC
+SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, par, tss, active, rain)
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    INTEGER,INTENT(in) :: nCols
@@ -166,7 +166,7 @@ SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, 
    zone_tss = zero_
    zone_par = zero_
    zone_wind = zero_
-   zone_rain = zero_ ! JC
+   zone_rain = zero_
    zone_I_0 = zero_
    zone_taub = zero_
    zone_count = 0
@@ -184,7 +184,7 @@ SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, 
       zone_tss(zon)    = zone_tss(zon) + tss(col)
       zone_par(zon)    = zone_par(zon) + par(col)
       zone_wind(zon)   = zone_wind(zon) + wnd(col)
-      zone_rain(zon)   = zone_rain(zon) + rain(col) !JC
+      zone_rain(zon)   = zone_rain(zon) + rain(col)
       zone_I_0(zon)    = zone_I_0(zon) + I_0(col)
     ! zone_taub(zon)   = zone_taub(zon) + col_taub
 
@@ -199,7 +199,7 @@ SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, 
    zone_tss  =  zone_tss / zone_count
    zone_par  =  zone_par / zone_count
    zone_wind = zone_wind / zone_count
-   zone_rain = zone_rain / zone_count ! JC
+   zone_rain = zone_rain / zone_count
    zone_I_0  =  zone_I_0 / zone_count
    zone_taub = zone_taub / zone_count
 
@@ -301,10 +301,10 @@ SUBROUTINE define_column_zone(column, zon, n_aed2_vars)!, n_vars)
             CASE ( 'density' )     ; column(av)%cell => zone_rho
             CASE ( 'layer_ht' )    ; column(av)%cell => zone_height
             CASE ( 'layer_area' )  ; column(av)%cell_sheet => zone_area(zon)
-            CASE ( 'rain' )        ; column(av)%cell_sheet => zone_rain(zon) ! JC
-       !    CASE ( 'rainloss' )    ; column(av)%cell_sheet => zone_rainloss(zon) ! JC
+            CASE ( 'rain' )        ; column(av)%cell_sheet => zone_rain(zon)
+       !    CASE ( 'rainloss' )    ; column(av)%cell_sheet => zone_rainloss(zon)
             CASE ( 'material' )    ; column(av)%cell_sheet => zone(zon)
-       !    CASE ( 'bathy' )       ; column(av)%cell_sheet => zone_bathy(zon)! Does it mean this var is already pointed to the correct variable of TFFV? JC
+       !    CASE ( 'bathy' )       ; column(av)%cell_sheet => zone_bathy(zon)
             CASE ( 'extc_coef' )   ; column(av)%cell => zone_extc
             CASE ( 'tss' )         ; column(av)%cell => zone_tss
        !    CASE ( 'par' )         ; column(av)%cell => zone_par
@@ -321,6 +321,9 @@ SUBROUTINE define_column_zone(column, zon, n_aed2_vars)!, n_vars)
             CASE ( 'par_sf' )      ; column(av)%cell_sheet => zone_I_0(zon)
        !    CASE ( 'taub' )        ; column(av)%cell_sheet => zone_taub
        !    CASE ( 'air_temp' )    ; column(av)%cell_sheet => zone_air_temp(zon)
+
+       !    CASE ( 'nearest_active' ) ; column(av)%cell_sheet => zone_nearest_active(col);
+       !    CASE ( 'nearest_depth' )  ; column(av)%cell_sheet => zone_nearest_depth(col);
             CASE DEFAULT ; CALL STOPIT("ERROR: external variable "//trim(tvar%name)//" not found.")
          END SELECT
       ELSEIF ( tvar%diag ) THEN  !# Diagnostic variable

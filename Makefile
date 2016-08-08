@@ -4,16 +4,9 @@
 #
 
 objdir=obj
-moddir=mod
 srcdir=src
 libdir=lib
-VERS=1.0.1
-
-ifeq ($(EXTERNAL_LIBS),static)
-  tuflowfv_external_wq=libtuflowfv_external_wq.a
-else
-  tuflowfv_external_wq=libtuflowfv_external_wq.so
-endif
+VERS=1.0.2
 
 ifeq ($(AED2DIR),)
   AED2DIR=../libaed2
@@ -24,10 +17,14 @@ OUTLIB=libtuflowfv_wq_aed
 INCLUDES+=-I${AED2DIR}/include
 ifeq ($(SINGLE),true)
   INCLUDES+=-I${AED2DIR}/mod_s
-  LIBAED2=libaed2_s
+  LIBAED2=aed2_s
+  LIBFVAED2=fvaed2_s
+  moddir=mod_s
 else
   INCLUDES+=-I${AED2DIR}/mod
-  LIBAED2=libaed2
+  LIBAED2=aed2
+  LIBFVAED2=fvaed2
+  moddir=mod
 endif
 
 ifeq ($(F90),ifort)
@@ -49,7 +46,7 @@ ifeq ($(F90),ifort)
 endif
 
 FFLAGS+=-fPIC
-LIBS += -L${AED2DIR} -laed2
+LIBS += -L${AED2DIR} -l${LIBAED2}
 
 LIBS+=-lnetcdff -lnetcdf
 
@@ -67,27 +64,24 @@ TFFLAGS += -g -DAED2 -DEXTERNAL_WQ=2
 INCLUDES += -I${moddir}
 
 
-OBJECTS=${objdir}/fv_zones.o ${objdir}/fv_aed2_csv_reader.o ${objdir}/fv_aed2.o ${objdir}/tuflowfv_external_wq.o
+FVOBJECTS=${objdir}/fv_zones.o ${objdir}/fv_aed2.o
+OBJECTS=${objdir}/tuflowfv_external_wq.o
+
+SOFLAGS = --start-group ${libdir}/lib${LIBFVAED2}.a ${AED2DIR}/lib/lib${LIBAED2}.a --end-group
+
+all: ${objdir} ${moddir} ${libdir} ${libdir}/lib${LIBFVAED2}.a ${libdir}/$(OUTLIB).so
 
 
-ifeq ($(EXTERNAL_LIBS),static)
-
-all: ${objdir} ${moddir} ${libdir} ${libdir}/$(OUTLIB).a
-
-else
-
-  LDFLAGS += --start-group ${AED2DIR}/lib/${LIBAED2}.a --end-group
-
-all: ${objdir} ${moddir} ${libdir} ${libdir}/$(OUTLIB).so
-
-endif
+${libdir}/lib$(LIBFVAED2).a: $(FVOBJECTS)
+	ar -rv $@ $(FVOBJECTS) $(LDFLAGS)
+	ranlib $@
 
 ${libdir}/$(OUTLIB).a: $(OBJECTS)
 	ar -rv $@ $(OBJECTS) $(LDFLAGS)
 	ranlib $@
 
 ${libdir}/$(OUTLIB).so: $(OBJECTS)
-	ld -shared -o $@.$(VERS) $(OBJECTS) $(LDFLAGS)
+	ld -shared -o $@.$(VERS) $(OBJECTS) $(LDFLAGS) $(SOFLAGS)
 	ln -sf $@.$(VERS) $@
 
 
@@ -112,6 +106,7 @@ clean:
 	/bin/rm -f ${objdir}/*.o
 	/bin/rm -f ${moddir}/*.mod
 	/bin/rm -f ${libdir}/*.a
+	/bin/rm -f ${libdir}/*.so*
 
 distclean: clean
 	/bin/rm -rf ${libdir} ${moddir} ${objdir}
