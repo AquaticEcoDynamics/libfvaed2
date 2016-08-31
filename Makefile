@@ -109,4 +109,4 @@ clean:
 	/bin/rm -f ${libdir}/*.so*
 
 distclean: clean
-	/bin/rm -rf ${libdir} ${moddir} ${objdir}
+	/bin/rm -rf ${libdir} ${moddir} ${objdir} mod_s

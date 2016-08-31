@@ -25,14 +25,24 @@ else ifeq ($(PRECISION),2)
 else
   FFLAGS += -D_PRECISION=1
 endif
+ifeq ($(SINGLE),true)
+  FFLAGS += -DSINGLE
+  MODDIR=mod_s
+  AEDLIB=libaed2_s.a
+  FVAEDLIB=fvaed2_s
+else
+  MODDIR=mod
+  AEDLIB=libaed2.a
+  FVAEDLIB=fvaed2
+endif
 
 ifdef AED2DIR
     OBJECTS=
     FFLAGS += -g -DAED2 -DEXTERNAL_WQ=2
-    INCLUDES += -I${AED2DIR}/mod -I../tuflowfv_aed
+    INCLUDES += -I${AED2DIR}/$(MODDIR) -I$(FVAED2DIR)/$(AED2MOD)
     OBJECTS+=tuflowfv_external_wq.o
     ifeq ($(EXTERNAL_LIBS),shared)
-      LDFLAGS += --start-group ${AED2DIR}/lib/libaed2.a ../tuflowfv_aed/libtuflowfv_aed.a --end-group
+      LDFLAGS += --start-group ${AED2DIR}/lib/$(AEDLIB) ../tuflowfv_aed/$(FVAEDLIB) --end-group
     endif
 else
     OBJECTS=tuflowfv_external_wq.o

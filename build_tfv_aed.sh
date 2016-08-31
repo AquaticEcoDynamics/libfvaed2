@@ -11,8 +11,11 @@ fi
 if [ "$DEBUG" = "" ] ; then
    export DEBUG=true
 fi
+if [ "$PRECISION" = "" ] ; then
+   export PRECISION=1
+fi
 if [ "$SINGLE" = "" ] ; then
-   export SINGLE=true
+   export SINGLE=false
 fi
 if [ "$EXTERNAL_LIBS" = "" ] ; then
   export EXTERNAL_LIBS=shared

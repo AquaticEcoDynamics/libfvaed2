@@ -13,18 +13,18 @@ INCLUDE 'COMPILER_DIRECTIVES.FI'
   IMPLICIT NONE
 ! MODULE ACCESS
   PRIVATE
-  PUBLIC :: fvwq
+  PUBLIC :: fvwq, wqrk, wqdk
   PUBLIC :: wq
   PUBLIC :: tuflowfv_init_extern_wq, tuflowfv_construct_extern_wq, tuflowfv_do_extern_wq, tuflowfv_destruct_extern_wq
 
 ! MODULE PARAMETERS
   INTEGER,PARAMETER :: WQFileNum = 20
-!DEC$ IF (_PRECISION==1)
-  INTEGER,PARAMETER :: realkind = 4
-!DEC$ ELSE IF (_PRECISION==2)
-  INTEGER,PARAMETER :: realkind = 8
+!DEC$ IF DEFINED(SINGLE)
+  INTEGER,PARAMETER :: wqrk = 4
+!DEC$ ELSE
+  INTEGER,PARAMETER :: wqrk = 8
 !DEC$ END IF
-  INTEGER,PARAMETER :: doublekind=8
+  INTEGER,PARAMETER :: wqdk = 8
 
 !DEC$ IF (PLATFORM==1) ! Windows
   CHARACTER(LEN=1),PARAMETER :: slash = '\'
@@ -40,8 +40,8 @@ TYPE :: fvwq
     INTEGER :: typ                                              ! WQ MODEL ID
     CHARACTER(LEN=30) :: model                                  ! WQ MODEL DESCRIPTION
     LOGICAL :: updated                                          ! UPDATED STATUS
-    REAL(doublekind) :: dt_update                               ! UPDATE TIMESTEP
-    REAL(doublekind) :: t_update                                ! NEXT UPDATE TIME
+    REAL(wqdk) :: dt_update                               ! UPDATE TIMESTEP
+    REAL(wqdk) :: t_update                                ! NEXT UPDATE TIME
     INTEGER :: NC2                                              ! NUMBER OF 2D CELLS
     INTEGER :: NC3                                              ! NUMBER OF 3D CELLS
     INTEGER :: Nwq                                              ! NUMBER OF WQ CONSTITUENTS
@@ -54,32 +54,34 @@ TYPE :: fvwq
     INTEGER,POINTER,DIMENSION(:) :: benth_map                   ! BOTTOM/BENTHIC LAYER MAP (NC2)
     INTEGER,POINTER,DIMENSION(:) :: NL                          ! NUMBER OF LAYERS (NC2)
     INTEGER,POINTER,DIMENSION(:,:) :: mat_id                    ! MATERIAL ID (NMG,NC2)
-    REAL(realkind),POINTER,DIMENSION(:) :: thick                ! CELL THICKNESS (NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: depth                ! LOCAL MID-CELL DEPTH (NC3)
-    REAL(realkind),POINTER,DIMENSION(:,:) :: dcdt               ! TEMPORAL DERIVATIVE OF WQ CONSTITUENTS (NWQ,NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: sal                  ! SALINITY POINTER (NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: temp                 ! TEMPERATURE POINTER (NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: tss                  ! TOTAL SUSPENDED SOLIDS POINTER (NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: vvel                 ! VERTICAL VELOCITIES (NC3)
-    REAL(realkind),POINTER,DIMENSION(:,:) :: par                ! NET SHORTWAVE RADIATION (NC3)
-    REAL(realkind),POINTER,DIMENSION(:,:) :: cc                 ! WQ CONSTITUENT CONCENTRATIONS (NWQ,NC3)
-    REAL(realkind),POINTER,DIMENSION(:,:) :: diag               ! DIAGNOSTIC WQ VARIABLES (NDIAG,NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: density              ! ABSOLUTE DENSITY (NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: I_0                  ! NET SURFACE IRRADIANCE (NC2)
-    REAL(realkind),POINTER,DIMENSION(:) :: wind                 ! 10M WINDSPEED (NC2)
-    REAL(realkind),POINTER,DIMENSION(:) :: precip               ! RAIN (NC2)                                                         !#MH
-    REAL(realkind),POINTER,DIMENSION(:) :: ustar_bed            ! BED FRICTION VELOCITY (NC2)
-    REAL(realkind),POINTER,DIMENSION(:) :: ustar_surf           ! SURFACE FRICTION VELOCITY (NC2)
-    REAL(realkind),POINTER,DIMENSION(:) :: air_temp             ! Air Temperature (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: thick                ! CELL THICKNESS (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: depth                ! LOCAL MID-CELL DEPTH (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:,:) :: dcdt               ! TEMPORAL DERIVATIVE OF WQ CONSTITUENTS (NWQ,NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: sal                  ! SALINITY POINTER (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: temp                 ! TEMPERATURE POINTER (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: tss                  ! TOTAL SUSPENDED SOLIDS POINTER (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: vvel                 ! VERTICAL VELOCITIES (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:,:) :: par                ! NET SHORTWAVE RADIATION (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:,:) :: cc                 ! WQ CONSTITUENT CONCENTRATIONS (NWQ,NC3)
+    REAL(wqrk),POINTER,DIMENSION(:,:) :: diag               ! DIAGNOSTIC WQ VARIABLES (NDIAG,NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: density              ! ABSOLUTE DENSITY (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: I_0                  ! NET SURFACE IRRADIANCE (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: wind                 ! 10M WINDSPEED (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: precip               ! RAIN (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: ustar_bed            ! BED FRICTION VELOCITY (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: ustar_surf           ! SURFACE FRICTION VELOCITY (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: air_temp             ! AIR TEMPERATURE (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: wv_uorb              !
+    REAL(wqrk),POINTER,DIMENSION(:) :: wv_t                 !
     ! Arrays that control feedbacks between the models
-    REAL(realkind),POINTER,DIMENSION(:) :: bioshade             ! BIOGEOCHEMICAL LIGHT EXTINCTION COEFFICIENT RETURNED FROM WQ (NC3)
-    REAL(realkind),POINTER,DIMENSION(:) :: biodrag              ! ADDITIONAL DRAG ON FLOW FROM BIOLOGY, RETURNED FROM WQ (NC3)       !#MH
-    REAL(realkind),POINTER,DIMENSION(:) :: solarshade           ! REDUCTION OF SOLAR RADIATION DUE TO SHADING RETURNED FROM WQ (NC2) !#MH
-    REAL(realkind),POINTER,DIMENSION(:) :: rainloss             ! LOSS OF RAINFALL INTO EXPOSED SEDIMENT RETURNED FROM WQ (NC2)      !#MH
+    REAL(wqrk),POINTER,DIMENSION(:) :: bioshade             ! BIOGEOCHEMICAL LIGHT EXTINCTION COEFFICIENT RETURNED FROM WQ (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: biodrag              ! ADDITIONAL DRAG ON FLOW FROM BIOLOGY, RETURNED FROM WQ (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: solarshade           ! REDUCTION OF SOLAR RADIATION DUE TO SHADING RETURNED FROM WQ (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: rainloss             ! LOSS OF RAINFALL INTO EXPOSED SEDIMENT RETURNED FROM WQ (NC2)
     ! Variables required for AED2 dry cell models
     LOGICAL,POINTER,DIMENSION(:) :: active                      ! COLUMN ACTIVE STATUS (NC2)
-    REAL(realkind),POINTER,DIMENSION(:) :: area                 ! CELL AREA (NC2)
-    REAL(realkind),POINTER,DIMENSION(:) :: bathy                ! HEIGHT OF COLUMN BOTTOM (NC2)                                      !#MH
+    REAL(wqrk),POINTER,DIMENSION(:) :: area                 ! CELL AREA (NC2)
+    REAL(wqrk),POINTER,DIMENSION(:) :: bathy                ! HEIGHT OF COLUMN BOTTOM (NC2)
 END TYPE
 
 ! MODULE OBJECTS
@@ -188,6 +190,8 @@ SUBROUTINE tuflowfv_construct_extern_wq(nlog)
                             wq%air_temp,        &
                             wq%ustar_bed,       &
                             wq%ustar_surf,      &
+                            wq%wv_uorb,         &
+                            wq%wv_t,            &
                             wq%depth,           &
                             wq%bathy,           &
                             wq%mat_id,          &

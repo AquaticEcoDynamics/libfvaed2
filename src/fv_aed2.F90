@@ -607,6 +607,8 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
                                air_temp_,        &
                                ustar_bed_,       &
                                ustar_surf_,      &
+                               wv_uorb_,         &
+                               wv_t_,            &
                                z_,               &
                                bathy_,           &
                                mat_id_,          &
@@ -627,7 +629,7 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: I_0_, wnd_, ustar_bed_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: rain_, bathy_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: biodrag_, ustar_surf_, solarshade_, rainloss_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: air_temp_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: air_temp_, wv_uorb_, wv_t_
    INTEGER,  INTENT(in), DIMENSION(:,:), POINTER :: mat_id_
    LOGICAL,  INTENT(in), DIMENSION(:),   POINTER :: active_
 !
@@ -654,8 +656,8 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
    bio_drag => biodrag_
    air_temp => air_temp_
    IF(link_wave_stress)THEN
-     wv_uorb => ustar_surf_
-     wv_t => air_temp_
+     wv_uorb => wv_uorb_
+     wv_t => wv_t_
    END IF
    
    !# 3D variables being pointed to

@@ -3,9 +3,12 @@
 #
 
 export AED2=true
-#export SINGLE=false
-#export WITH_PLOTS=true
-#export WITH_XPLOTS=true
+export EXTERNAL_LIBS=shared
+#export EXTERNAL_LIBS=static
+export SINGLE=false
+#export SINGLE=true
+export PRECISION=1
+#export PRECISION=2
 
 export FORTRAN_COMPILER=IFORT
 
@@ -13,7 +16,6 @@ export FORTRAN_COMPILER=IFORT
 #export HOMEBREW=true
 
 export CURDIR=`pwd`
-#export FABMDIR=${CURDIR}/../fabm-git
 
 export GOTMDIR=${CURDIR}/../gotm-git
 export PLOTDIR=${CURDIR}/../libplot
