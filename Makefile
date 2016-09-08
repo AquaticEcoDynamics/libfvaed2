@@ -11,7 +11,7 @@ VERS=1.0.2
 ifeq ($(AED2DIR),)
   AED2DIR=../libaed2
 endif
-OUTLIB=libtuflowfv_wq_aed
+OUTLIB=libtuflowfv_external_wq
 
 
 INCLUDES+=-I${AED2DIR}/include
@@ -69,7 +69,11 @@ OBJECTS=${objdir}/tuflowfv_external_wq.o
 
 SOFLAGS = --start-group ${libdir}/lib${LIBFVAED2}.a ${AED2DIR}/lib/lib${LIBAED2}.a --end-group
 
+ifeq ($(EXTERNAL_LIBS),shared)
 all: ${objdir} ${moddir} ${libdir} ${libdir}/lib${LIBFVAED2}.a ${libdir}/$(OUTLIB).so
+else
+all: ${objdir} ${moddir} ${libdir} ${libdir}/lib${LIBFVAED2}.a ${libdir}/$(OUTLIB).a
+endif
 
 
 ${libdir}/lib$(LIBFVAED2).a: $(FVOBJECTS)
@@ -82,7 +86,7 @@ ${libdir}/$(OUTLIB).a: $(OBJECTS)
 
 ${libdir}/$(OUTLIB).so: $(OBJECTS)
 	ld -shared -o $@.$(VERS) $(OBJECTS) $(LDFLAGS) $(SOFLAGS)
-	ln -sf $@.$(VERS) $@
+	ln -sf $(OUTLIB).so.$(VERS) $@
 
 
 ${objdir}/%.o: ${srcdir}/%.F90 ${AED2DIR}/include/aed2.h
