@@ -15,17 +15,10 @@ OUTLIB=libtuflowfv_external_wq
 
 
 INCLUDES+=-I${AED2DIR}/include
-ifeq ($(SINGLE),true)
-  INCLUDES+=-I${AED2DIR}/mod_s
-  LIBAED2=aed2_s
-  LIBFVAED2=fvaed2_s
-  moddir=mod_s
-else
-  INCLUDES+=-I${AED2DIR}/mod
-  LIBAED2=aed2
-  LIBFVAED2=fvaed2
-  moddir=mod
-endif
+INCLUDES+=-I${AED2DIR}/mod
+LIBAED2=aed2
+LIBFVAED2=fvaed2
+moddir=mod
 
 ifeq ($(F90),ifort)
   INCLUDES+=-I/opt/intel/include
@@ -35,11 +28,7 @@ ifeq ($(F90),ifort)
   ifeq ($(WITH_CHECKS),true)
     FFLAGS+=-check
   endif
-  ifeq ($(SINGLE),true)
-    FFLAGS+=-real-size 32 -DSINGLE=1
-  else
-    FFLAGS+=-real-size 64
-  endif
+  FFLAGS+=-real-size 64
   LIBS+=-lifcore -lsvml
   LIBS+=-limf -lintlc
   LIBS+=-L/opt/intel/lib -Wl,-rpath=/opt/intel/lib
