@@ -3,8 +3,8 @@
 #
 
 export AED2=true
-export EXTERNAL_LIBS=shared
-#export EXTERNAL_LIBS=static
+#export EXTERNAL_LIBS=shared
+export EXTERNAL_LIBS=static
 export SINGLE=false
 #export SINGLE=true
 export PRECISION=1

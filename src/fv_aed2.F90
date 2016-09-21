@@ -196,7 +196,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    IF ( status /= 0 ) CALL STOPIT("Cannot open file " // TRIM(tname))
    READ(namlst,nml=aed2_bio,iostat=status)
    IF ( status /= 0 ) STOP "Cannot read namelist entry aed2_bio"
-   
+
 
    models = ''
    READ(namlst, nml=aed2_models, iostat=status)
@@ -314,7 +314,7 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    cc_diag => cc_diag_
    surf_map => sm
    benth_map => bm
- 
+
    ! Allocate state variable array
    IF ( .NOT. ASSOCIATED(cc) ) STOP ' Error : no association for (cc)'
    cc = 0.
@@ -659,7 +659,7 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
      wv_uorb => wv_uorb_
      wv_t => wv_t_
    END IF
-   
+
    !# 3D variables being pointed to
    h    => h_            !# layer heights [1d array] needed for advection, diffusion
    z    => z_            !# depth [1d array], used to calculate local pressure
@@ -714,8 +714,8 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
       ENDDO
    ELSE
       CALL init_zones(ubound(mat_id_, 2), mat_id_, n_aed2_vars, n_vars, n_vars_ben)
-   ENDIF   
-   
+   ENDIF
+
 END SUBROUTINE set_env_aed2_models
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1139,14 +1139,14 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    DO col=1, nCols
       !IF(col==14575) &
       !print *,'Column: ',col,active(col),h(benth_map(col))
-      
+
       !# find top and bottom cell indicies based on maps provided by the host
       top = surf_map(col)
       bot = benth_map(col)
 
       !# compute bottom shear stress for this column based on ustar from host
       !col_taub = rho(bot)*(ustar_bed(col)*ustar_bed(col))
-      CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col),wv_uorb(col),wv_t(col)) 
+      CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col),wv_uorb(col),wv_t(col))
 
 
 
@@ -1165,14 +1165,14 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       aed_active_col = active(col)
       IF( h(benth_map(col))<min_water_depth ) aed_active_col = .false.  ! MH TUFLOWFV 4cm dry cells
       IF ( .NOT.  Riparian(column, aed_active_col, shadefrac(col), rainloss(col)) ) THEN
-         IF ( request_nearest ) THEN 
+         IF ( request_nearest ) THEN
             na = nearest_active(col)
             ! Check for cells that are routed to dry pools
-            IF ( h(benth_map(na)) >= min_water_depth ) THEN   
+            IF ( h(benth_map(na)) >= min_water_depth ) THEN
                cc(:,benth_map(na))=cc(:,benth_map(na))+dt*flux_rip(:) &
                               * MIN((area(col)/area(na)),1e2)/h(benth_map(na))
             ENDIF
-         ENDIF 
+         ENDIF
       !IF(col==14575) THEN
       !print *,'cc_: ',cc(:,benth_map(col))
       !print *,'cc_diag: ',cc_diag(:,benth_map(col))
@@ -1257,7 +1257,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 ! print*,"DONE do_aed2_models"
 
 CONTAINS
-   
+
    !###############################################################################
    SUBROUTINE re_initialize()
    !-------------------------------------------------------------------------------
@@ -1450,7 +1450,7 @@ LOGICAL FUNCTION Riparian(column, actv, shade_frac, rain_loss)
 !LOCAL VARIABLES:
    INTEGER :: i
    AED_REAL :: localshade
-   AED_REAL :: localrainl 
+   AED_REAL :: localrainl
 !
 !-------------------------------------------------------------------------------
 !BEGIN
@@ -1465,9 +1465,9 @@ LOGICAL FUNCTION Riparian(column, actv, shade_frac, rain_loss)
    !# update feedback arrays to host model, to reduce rain (or if -ve then add flow)
    CALL aed2_rain_loss(column, 1, localrainl);
    IF (link_rain_loss) rain_loss = localrainl
-   
 
-   !# update feedback arrays to shade the water (ie reduce incoming light, Io) 
+
+   !# update feedback arrays to shade the water (ie reduce incoming light, Io)
    CALL aed2_light_shading(column, 1, localshade)
    IF (link_solar_shade) shade_frac = localshade
 
@@ -1519,7 +1519,7 @@ SUBROUTINE Particles(column, count, h_)
 !BEGIN
    zz = zero_
 
-  ! CALL aed2_particle_bgc(column,1,ppid ...)   
+  ! CALL aed2_particle_bgc(column,1,ppid ...)
    IF (count <= 1) RETURN
 
    DO i = 2, count
@@ -1552,19 +1552,19 @@ SUBROUTINE BioExtinction(column,count,extc)
    CALL aed2_light_extinction(column, 1, localext)
    IF (link_water_clarity) THEN
      extc(1) = localext
-   ELSE   
+   ELSE
      extc(1) = localext + Kw
-   END IF  
-   
+   END IF
+
    IF (count <= 1) RETURN
 
    DO i = 2, count
       CALL aed2_light_extinction(column, i, localext)
      IF (link_water_clarity) THEN
        extc(i) = localext
-     ELSE   
+     ELSE
        extc(i) = localext + Kw
-     END IF  
+     END IF
    ENDDO
 END SUBROUTINE BioExtinction
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1590,7 +1590,7 @@ SUBROUTINE BioDrag(column,count,bdrag)
 !BEGIN
    bdrag = zero_
    localdrag = zero_
-   
+
    CALL aed2_bio_drag(column, count, localdrag)
 
    IF (link_bottom_drag) bdrag = localdrag
@@ -1646,9 +1646,9 @@ SUBROUTINE Stress(h,rho,taub,ustar,uorb,wvperiod)
 
    ! Current shear stress
    taub = rho*(ustar**2)
-   
-   IF(.NOT. link_wave_stress) RETURN   
-          
+
+   IF(.NOT. link_wave_stress) RETURN
+
    ! Shear stress due to wave-induced orbital velocity
    IF (h<0.05 .OR. uorb<0.001 .OR. wvperiod<0.01) THEN
    ELSE
@@ -1658,12 +1658,12 @@ SUBROUTINE Stress(h,rho,taub,ustar,uorb,wvperiod)
       fwr = EXP(5.21*(ksw/Aw)**0.194-5.98) ! ROUGH-TURBULENT FRICTION FACTOR
       fw = MAX(fws,fwr)
       tauw = (0.5*rho*fw*uorb**2)  *wave_factor
-      
+
       ! Total current + wave stress
       taub = taub*(1.+1.2*(tauw/(taub+tauw+1e-10))**3.2) ! MEAN Bed shear
       taub = SQRT(taub**2+0.5*tauw**2) !RMS Bed shear
 
-     ! print *,'tau',taub,tauw  
+     ! print *,'tau',taub,tauw
    END IF
 END SUBROUTINE Stress
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
