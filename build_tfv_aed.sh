@@ -14,9 +14,6 @@ fi
 if [ "$PRECISION" = "" ] ; then
    export PRECISION=1
 fi
-if [ "$SINGLE" = "" ] ; then
-   export SINGLE=false
-fi
 if [ "$EXTERNAL_LIBS" = "" ] ; then
   export EXTERNAL_LIBS=shared
 fi
@@ -27,12 +24,6 @@ fi
 export F77=$FC
 export F90=$FC
 export F95=$FC
-
-if [ "$SINGLE" = "true" ] ; then
-  export PRECISION=1
-else
-  export PRECISION=2
-fi
 
 cd ${AED2DIR}
 make

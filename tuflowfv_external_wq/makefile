@@ -25,16 +25,9 @@ else ifeq ($(PRECISION),2)
 else
   FFLAGS += -D_PRECISION=1
 endif
-ifeq ($(SINGLE),true)
-  FFLAGS += -DSINGLE
-  MODDIR=mod_s
-  AEDLIB=libaed2_s.a
-  FVAEDLIB=fvaed2_s
-else
-  MODDIR=mod
-  AEDLIB=libaed2.a
-  FVAEDLIB=fvaed2
-endif
+MODDIR=mod
+AEDLIB=libaed2.a
+FVAEDLIB=fvaed2
 
 ifdef AED2DIR
     OBJECTS=
