@@ -201,6 +201,16 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    Kw = base_par_extinction
    Ksed = tss_par_extinction
    IF ( do_zone_averaging ) old_zones = .FALSE.
+   print *,'    link options configured between TFV & AED2 - '
+   print *.'        link_ext_par       :  ',link_ext_par
+   print *.'        link_water_clarity :  ',link_water_clarity
+   print *.'        link_surface_drag  :  ',link_surface_drag,' (not active)'
+   print *.'        link_bottom_drag   :  ',link_bottom_drag
+   print *.'        link_wave_stress   :  ',link_wave_stress
+   print *.'        link_solar_shade   :  ',link_solar_shade
+   print *.'        link_rain_loss     :  ',link_rain_loss
+   print *.'        link_particle_bgc  :  ',do_particle_bgc,' (not active)'
+   print *.'        link_water_density :  ',link_water_density,' (not active)'
 
    ! Process input file (aed2.nml) to get selected models
    models = ''
@@ -239,14 +249,15 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
 
    !# names = grab the names from info
    ALLOCATE(names(1:nwq_var),stat=status)
-   IF (status /= 0) STOP 'allocate_memory(): Error allocating (names)'
+   IF (status /= 0) STOP 'allocate_memory(): ERROR allocating (names)'
    ALLOCATE(bennames(1:nben_var),stat=status)
-   IF (status /= 0) STOP 'allocate_memory(): Error allocating (bennames)'
+   IF (status /= 0) STOP 'allocate_memory(): ERROR allocating (bennames)'
    IF ( .NOT. ALLOCATED(diagnames) ) ALLOCATE(diagnames(ndiag_var))
-   IF (status /= 0) STOP 'allocate_memory(): Error allocating (diagnames)'
+   IF (status /= 0) STOP 'allocate_memory(): ERROR allocating (diagnames)'
 
    ALLOCATE(min_(1:nwq_var+nben_var)) ; ALLOCATE(max_(1:nwq_var+nben_var))
 
+   print *,"     configured variables: "
    j = 0
    DO i=1,n_aed2_vars
       IF ( aed2_get_var(i, tvar) ) THEN
@@ -268,7 +279,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
             bennames(j) = TRIM(tvar%name)
             min_(nwq_var+j) = tvar%minimum
             max_(nwq_var+j) = tvar%maximum
-            print *,"     B(",j,") AED2 benthic(2D) variable ", TRIM(bennames(j))
+            print *,"     B(",j,") AED2 benthic(2D) variable: ", TRIM(bennames(j))
          ENDIF
       ENDIF
    ENDDO
@@ -279,7 +290,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
          IF ( tvar%diag ) THEN
             j = j + 1
             diagnames(j) = TRIM(tvar%name)
-            print *,"     D(",j,") AED2 diagnostic variable  ", TRIM(diagnames(j))
+            print *,"     D(",j,") AED2 diagnostic variable:  ", TRIM(diagnames(j))
          ENDIF
       ENDIF
    ENDDO
@@ -318,16 +329,16 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    benth_map => bm
 
    ! Allocate state variable array
-   IF ( .NOT. ASSOCIATED(cc) ) STOP ' Error : no association for (cc)'
+   IF ( .NOT. ASSOCIATED(cc) ) STOP ' ERROR : no association for (cc)'
    cc = 0.
 
-   IF (.not. ASSOCIATED(cc_diag) ) STOP ' Error : no association for (cc_diag)'
+   IF (.not. ASSOCIATED(cc_diag) ) STOP ' ERROR : no association for (cc_diag)'
    cc_diag = 0.
 
    ! Allocate array with vertical movement rates (m/s, positive for upwards),
    ! and set these to the values provided by the model.
    ALLOCATE(ws(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (ws)'
    ws = 0.
 
    !!# place holder for lagranigan particles
@@ -338,27 +349,27 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    ALLOCATE(par(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (par)'
    par = 0.
    ALLOCATE(nir(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (nir)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (nir)'
    nir = 0.
    ALLOCATE(uva(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (uva)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (uva)'
    uva = 0.
    ALLOCATE(uvb(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (uvb)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (uvb)'
    uvb = 0.
 
    !# Allocate array for sedimentation fluxes and initialize these to zero (no flux).
    ALLOCATE(Fsed_setl(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (Fsed_setl)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (Fsed_setl)'
    Fsed_setl = 0.
 
    !# Now set initial values
    v = 0 ; sv = 0;
    DO av=1,n_aed2_vars
-      IF ( .NOT.  aed2_get_var(av, tv) ) STOP "Error getting variable info"
+      IF ( .NOT.  aed2_get_var(av, tv) ) STOP "ERROR getting variable info"
       IF ( .NOT. ( tv%extern .OR. tv%diag) ) THEN  !# neither global nor diagnostic variable
          IF ( tv%sheet ) THEN
             sv = sv + 1
@@ -373,12 +384,12 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    IF ( init_values_file /= '' ) CALL set_initial_from_file
    IF ( route_table_file /= '' ) CALL load_route_table(ubound(bm, 1))
 
-   ALLOCATE(flux(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux)'
+   ALLOCATE(flux(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux)'
 #if !_NO_ODE_
-   ALLOCATE(flux2(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux2)'
-   ALLOCATE(flux3(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux3)'
-   ALLOCATE(flux4(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux4)'
-   ALLOCATE(cc1(n_vars, nCells),stat=rc)   ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (cc1)'
+   ALLOCATE(flux2(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux2)'
+   ALLOCATE(flux3(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux3)'
+   ALLOCATE(flux4(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux4)'
+   ALLOCATE(cc1(n_vars, nCells),stat=rc)   ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (cc1)'
 #endif
 !
 !-------------------------------------------------------------------------------
@@ -439,7 +450,9 @@ CONTAINS
    !----------------------------------------------------------------------------
       unit = aed_csv_read_header(init_values_file, csvnames, nccols)
       IF (unit <= 0) RETURN !# No file found
-      print *,'    spatial AED2 var initialisation from file: ', TRIM(init_values_file)
+      print *,'    spatial AED2 var initialisation from file: '
+      print *,'        ', TRIM(init_values_file)
+
       DO ccol=1,nccols
          IF ( csvnames(ccol) == "ID" ) THEN
             idx_col = ccol
@@ -456,7 +469,7 @@ CONTAINS
       IF ( idx_col > 0 ) THEN
          v = 0 ; sv = 0; d = 0; sd = 0
          DO av=1,n_aed2_vars
-            IF ( .NOT. aed2_get_var(av, tv) ) STOP "Error getting variable info"
+            IF ( .NOT. aed2_get_var(av, tv) ) STOP "ERROR getting variable info"
             IF ( .NOT. ( tv%extern ) ) THEN  !#  dont do environment vars
                IF (tv%diag) THEN
                   d = d + 1
@@ -544,7 +557,8 @@ CONTAINS
    !----------------------------------------------------------------------------
       unit = aed_csv_read_header(route_table_file, csvnames, nccols)
       IF (unit <= 0) RETURN !# No file found
-      print *,'    riparian cell routing set from file: ', TRIM(route_table_file)
+      print *,'    riparian cell routing set from file: '
+      print *,'        ', TRIM(route_table_file)
 !# The format of the file should be me, "lowest ajoining" - ie always 2 colums
 !# and always in the order - and we dont really care about the header, but being
 !# csv it should have it so we read but ignore it.
@@ -570,7 +584,7 @@ CONTAINS
       DO WHILE ( aed_csv_read_row(unit, values) )
          crow = crow + 1
          IF ( crow > nrows ) THEN
-            print*, "        routing table has more rows than expected - extras ignored"
+            print*, "        NOTE: routing table has more rows than expected - extras ignored"
          ENDIF
          t = extract_integer(values(idx_col))
          route_table(crow) = extract_integer(values(2))
@@ -579,7 +593,7 @@ CONTAINS
       ENDDO
 
       IF ( crow < nrows ) &
-      print*, "        routing table has less rows than expected? ",crow,"/",nrows
+      print*, "        NOTE: routing table has less rows than expected? ",crow,"/",nrows
 
       meh = aed_csv_close(unit)
       !# don't care if close fails
@@ -765,7 +779,7 @@ SUBROUTINE check_data
    err_count = 0
 
    DO av=1,n_aed2_vars
-      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "Error getting variable info"
+      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "ERROR getting variable info"
 
       IF ( tvar%extern ) THEN !# global variable
          ev = ev + 1
@@ -818,7 +832,7 @@ SUBROUTINE check_data
    if ( n_vars_diag < sd + d ) print *,"More diag vars than expected"
    if ( n_vars_diag_sheet < sd ) print *,"More sheet diag vars than expected"
 
-   IF ( err_count > 0 ) CALL STOPIT("*** Errors in configuration")
+   IF ( err_count > 0 ) CALL STOPIT("*** ERRORs in configuration")
 END SUBROUTINE check_data
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -850,7 +864,7 @@ SUBROUTINE define_column(column, col, cc, cc_diag, flux_pel, flux_atm, flux_ben,
    v = 0 ; d = 0; sv = 0; sd = 0 ; ev = 0
    DO av=1,n_aed2_vars
 
-      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "Error getting variable info"
+      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "ERROR getting variable info"
 
       IF ( tvar%extern ) THEN !# global variable
          ev = ev + 1
