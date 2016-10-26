@@ -133,8 +133,8 @@ CONTAINS
 !###############################################################################
 SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennames,diagnames)
 !-------------------------------------------------------------------------------
-! This routine is called by tuflowfv to define numbers of variables. TuflowFV
-! will allocate the variables after return from this routine.
+! This routine is called by TuflowFV to define numbers and names of variables.
+! TuflowFV will allocate the variables after return from this routine.
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    INTEGER,          INTENT(in)  :: namlst
@@ -170,6 +170,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
 !BEGIN
    print *, "*** Using fv_aed2 version ", TRIM(FV_AED_VERS)
 
+   ! Set default AED2 link options
    aed2_nml_file = 'aed2.nml'
    solution_method = 1
    link_bottom_drag = .false.
@@ -189,6 +190,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    min_water_depth = 0.0401
    link_wave_stress = .false.
 
+   ! Process input file (aed2.nml) to get run options
    IF ( aed2_init_core(dname) /= 0 ) STOP "Initialisation of aed2_core failed"
    tname = TRIM(dname)//'aed2.nml'
    print *,"Reading aed2_models config from ",TRIM(tname)
@@ -196,40 +198,38 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    IF ( status /= 0 ) CALL STOPIT("Cannot open file " // TRIM(tname))
    READ(namlst,nml=aed2_bio,iostat=status)
    IF ( status /= 0 ) STOP "Cannot read namelist entry aed2_bio"
+   Kw = base_par_extinction
+   Ksed = tss_par_extinction
+   IF ( do_zone_averaging ) old_zones = .FALSE.
 
-
+   ! Process input file (aed2.nml) to get selected models
    models = ''
    READ(namlst, nml=aed2_models, iostat=status)
    IF ( status /= 0 ) STOP "Cannot read namelist entry aed2_models"
 
-   Kw = base_par_extinction
-   Ksed = tss_par_extinction
-
-   IF ( do_zone_averaging ) old_zones = .FALSE.
-
+   ! Process each model define/setup block
    DO i=1,size(models)
       IF (models(i)=='') EXIT
       CALL aed2_define_model(models(i), namlst)
    ENDDO
 
+   ! Set number of configured variables
    n_aed2_vars = aed2_core_status(nwq_var, nben_var, ndiag_var, n_sd)
-
-#if DEBUG
-   DO i=1,n_aed2_vars
-      IF ( aed2_get_var(i, tvar) ) THEN
-         print *,"AED2 var ", i, tvar%sheet, tvar%diag, tvar%extern, TRIM(tvar%name)
-      ELSE
-         print *,"AED2 var ", i, " is empty"
-      ENDIF
-   ENDDO
-#endif
-
    ndiag_var = ndiag_var + n_sd
    n_vars = nwq_var
    n_vars_ben = nben_var
    n_vars_diag = ndiag_var
    n_vars_diag_sheet = n_sd
 
+#if DEBUG
+      DO i=1,n_aed2_vars
+         IF ( aed2_get_var(i, tvar) ) THEN
+            print *,"AED2 var ", i, tvar%sheet, tvar%diag, tvar%extern, TRIM(tvar%name)
+         ELSE
+            print *,"AED2 var ", i, " is empty"
+         ENDIF
+      ENDDO
+#endif
 #if DEBUG
    print*,'AED2 init_aed2_models : n_aed2_vars = ',n_aed2_vars,' nwq_var = ',nwq_var,' nben_var ',nben_var
 #endif
@@ -291,13 +291,14 @@ END SUBROUTINE init_aed2_models
 !###############################################################################
 SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
 !-------------------------------------------------------------------------------
+! Points the AED2 main variable arrays to those provided by the host model.
 ! At this point TuflowFV should have allocated the variable space.
 !-------------------------------------------------------------------------------
 !ARGUMENTS
-   INTEGER,INTENT(in) :: nCells
+   INTEGER,INTENT(in)                         :: nCells
    AED_REAL,POINTER,DIMENSION(:,:),INTENT(in) :: cc_, cc_diag_
-   INTEGER,INTENT(inout)                   :: nwq, nwqben
-   INTEGER,POINTER,DIMENSION(:),INTENT(in) :: sm, bm
+   INTEGER,INTENT(inout)                      :: nwq, nwqben
+   INTEGER,POINTER,DIMENSION(:),INTENT(in)    :: sm, bm
 !
 !LOCALS
    INTEGER :: rc, av, v, sv, d, sd
@@ -589,7 +590,7 @@ END SUBROUTINE init_var_aed2_models
 
 
 !###############################################################################
-SUBROUTINE set_env_aed2_models(dt_,              &   !
+SUBROUTINE set_env_aed2_models(dt_,              &
                             ! 3D env variables
                                temp_,            &
                                salt_,            &
@@ -619,19 +620,22 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
                                rainloss_         &
                                )
 !-------------------------------------------------------------------------------
-! Provide information about tuflowfv data not declared by aed2_bio
+! Provide environmental information from TuflowFV and set feedback arrays
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    DOUBLETYPE, INTENT(in) :: dt_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: temp_, salt_, rho_, h_,    &
                                                     area_, tss_, extcoeff_, z_
    AED_REAL, INTENT(in), DIMENSION(:,:), POINTER :: rad_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: I_0_, wnd_, ustar_bed_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: I_0_, wnd_, ustar_bed_, ustar_surf_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: wv_uorb_, wv_t_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: rain_, bathy_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: air_temp_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: biodrag_, ustar_surf_, solarshade_, rainloss_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: air_temp_, wv_uorb_, wv_t_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: wv_uorb_, wv_t_
    INTEGER,  INTENT(in), DIMENSION(:,:), POINTER :: mat_id_
    LOGICAL,  INTENT(in), DIMENSION(:),   POINTER :: active_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: biodrag_, solarshade_, rainloss_
 !
 !LOCALS
    INTEGER :: i, j
@@ -640,8 +644,10 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
 !
 !-------------------------------------------------------------------------------
 !BEGIN
-   !# Provide pointers to arrays with environmental variables to AED2.
    print *,'set_env_aed2_models  '
+
+   !# Provide pointers to arrays with environmental variables to AED2.
+   dt = dt_
 
    !# 2D (sheet) variables being pointed to
    area => area_
@@ -661,8 +667,8 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
    END IF
 
    !# 3D variables being pointed to
-   h    => h_            !# layer heights [1d array] needed for advection, diffusion
-   z    => z_            !# depth [1d array], used to calculate local pressure
+   h => h_               !# layer heights [1d array] needed for advection, diffusion
+   z => z_               !# depth [1d array], used to calculate local pressure
    extcoeff => extcoeff_ !# biogeochemical light attenuation coefficients [1d array],
                          !# output of biogeochemistry, input for physics
    salt => salt_
@@ -671,9 +677,15 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
    rho => rho_
    tss => tss_
    active => active_
+
+   IF (link_ext_par) THEN
+      lpar => rad_(1,:)
+   ENDIF
+
+
+
 !  ALLOCATE(pactive(size(active)))
 !  pactive = active
-
 #if DEBUG
 !if ( .not. associated(area) ) print*, " No association for area"
 !if ( .not. associated(I_0) ) print*, " No association for I_0"
@@ -695,13 +707,6 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
 !if ( .not. associated(tss) ) print*, " No association for tss"
 !if ( .not. associated(active) ) print*, " No association for active"
 #endif
-
-   dt = dt_
-
-   IF (link_ext_par) THEN
-      lpar => rad_(1,:)
-   ENDIF
-
 ! CALL CheckPhreatic
 
    IF (old_zones) THEN
@@ -1033,7 +1038,7 @@ SUBROUTINE FillNearest(nCols)
                k = route_table(k)
             ENDDO
             nearest_active(col) = k
-            nearest_depth(col) = h(benth_map(k)) + bathy(k)           ! this needs fixing to sum over top:bot, as h is layer thicknesses, not references to datum
+            nearest_depth(col) = h(benth_map(k)) + bathy(k) ! this needs fixing to sum over top:bot, as h is layer thicknesses, not references to datum
          ENDIF
       ENDDO
    ELSE
@@ -1137,8 +1142,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    !#--------------------------------------------------------------------
    !# THIS IS THE MAIN WQ SOLUTION LOOP
    DO col=1, nCols
-      !IF(col==14575) &
-      !print *,'Column: ',col,active(col),h(benth_map(col))
 
       !# find top and bottom cell indicies based on maps provided by the host
       top = surf_map(col)
@@ -1146,9 +1149,11 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
       !# compute bottom shear stress for this column based on ustar from host
       !col_taub = rho(bot)*(ustar_bed(col)*ustar_bed(col))
-      CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col),wv_uorb(col),wv_t(col))
-
-
+      IF ( link_wave_stress .AND. ASSOCIATED(wv_uorb) .AND. ASSOCIATED(wv_t) ) THEN
+         CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col),wv_uorb(col),wv_t(col))
+      ELSE
+         CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col))
+      ENDIF
 
       !# set column data structure from global arrays
       CALL define_column(column, col, cc, cc_diag, flux, flux_atm, flux_ben, flux_rip)
@@ -1162,6 +1167,8 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
       !# do riparian interfaces for this column and update fluxes
       flux_rip = zero_
+      shadefrac(col) = zero_
+      rainloss(col) = zero_
       aed_active_col = active(col)
       IF( h(benth_map(col))<min_water_depth ) aed_active_col = .false.  ! MH TUFLOWFV 4cm dry cells
       IF ( .NOT.  Riparian(column, aed_active_col, shadefrac(col), rainloss(col)) ) THEN
@@ -1173,15 +1180,8 @@ SUBROUTINE do_aed2_models(nCells, nCols)
                               * MIN((area(col)/area(na)),1e2)/h(benth_map(na))
             ENDIF
          ENDIF
-      !IF(col==14575) THEN
-      !print *,'cc_: ',cc(:,benth_map(col))
-      !print *,'cc_diag: ',cc_diag(:,benth_map(col))
-      !PAUSE
-      !ENDIF
          CYCLE
       ENDIF
-
-
 
       !# do non-kinetic updates to BGC variables (eq equilibration)
       IF ( ThisStep >= n_equil_substep ) CALL Update(column, bot-top+1)
@@ -1225,14 +1225,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       ENDIF
 #endif
 
-  !   !# do non-kinetic updates to BGC variables (eq equilibration)
-  !   CALL Update(column, bot-top+1)
- !    IF(col==14575) THEN
- !    print *,'cc_: ',cc(:,14575)
- !     print *,'cc_diag: ',cc_diag(:,14575)
- !     PAUSE
- !    ENDIF
-
 
       !# now the bgc updates are complete, update links to host model
       CALL BioDrag(column, bot-top+1, bio_drag(col))
@@ -1254,7 +1246,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
    IF ( ThisStep >= n_equil_substep ) ThisStep = 0
 
-! print*,"DONE do_aed2_models"
 
 CONTAINS
 
@@ -1630,14 +1621,15 @@ SUBROUTINE Stress(h,rho,taub,ustar,uorb,wvperiod)
 !
 !-------------------------------------------------------------------------------
 !ARGUMENTS
-   AED_REAL, INTENT(in) :: h,rho,ustar,uorb,wvperiod
+   AED_REAL, INTENT(in) :: h,rho,ustar
+   AED_REAL, INTENT(in),OPTIONAL :: uorb,wvperiod
    AED_REAL, INTENT(inout) :: taub
 !
 !LOCAL VARIABLES:
    AED_REAL,PARAMETER :: pi = 4.0*ATAN(1.0)
-   AED_REAL,PARAMETER :: kappa = 0.41
    AED_REAL,PARAMETER :: nuw = 1.05e-6
    AED_REAL,PARAMETER :: ksw = 0.001
+   AED_REAL,PARAMETER :: kappa = 0.41
    AED_REAL :: Aw,Rew,fwr,fws,fw,tauw
 !
 !-------------------------------------------------------------------------------
@@ -1647,23 +1639,26 @@ SUBROUTINE Stress(h,rho,taub,ustar,uorb,wvperiod)
    ! Current shear stress
    taub = rho*(ustar**2)
 
-   IF(.NOT. link_wave_stress) RETURN
+   IF( .NOT.PRESENT(uorb) .OR. .NOT.PRESENT(wvperiod) ) RETURN
 
    ! Shear stress due to wave-induced orbital velocity
    IF (h<0.05 .OR. uorb<0.001 .OR. wvperiod<0.01) THEN
    ELSE
       Aw = uorb*wvperiod/(2.*pi)
       Rew = uorb*Aw/nuw
-      fws = 0.035*Rew**(-0.16) ! SMOOTH FRICTION FACTOR
-      fwr = EXP(5.21*(ksw/Aw)**0.194-5.98) ! ROUGH-TURBULENT FRICTION FACTOR
+      ! Smooth friction factor
+      fws = 0.035*Rew**(-0.16)
+      ! Turbulent friction factor
+      fwr = EXP(5.21*(ksw/Aw)**0.194-5.98)
       fw = MAX(fws,fwr)
-      tauw = (0.5*rho*fw*uorb**2)  *wave_factor
+      ! Calculate wave stress (wave_factor allows for user scaling)
+      tauw = (0.5*rho*fw*uorb**2)*wave_factor
 
       ! Total current + wave stress
-      taub = taub*(1.+1.2*(tauw/(taub+tauw+1e-10))**3.2) ! MEAN Bed shear
-      taub = SQRT(taub**2+0.5*tauw**2) !RMS Bed shear
-
-     ! print *,'tau',taub,tauw
+      !-- a) mean bed shear
+      taub = taub*( 1.+1.2*(tauw/(taub+tauw+1e-10))**3.2 )
+      !-- b) RMS bed shear
+      taub = SQRT( taub**2 + 0.5*tauw**2 )
    END IF
 END SUBROUTINE Stress
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
