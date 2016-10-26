@@ -28,7 +28,7 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "0.9.24"
+#define FV_AED_VERS "0.9.28"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -168,7 +168,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
 !
 !-------------------------------------------------------------------------------
 !BEGIN
-   print *, "*** Using fv_aed2 version ", TRIM(FV_AED_VERS)
+   print *, "*** using fv_aed2 version ", TRIM(FV_AED_VERS)
 
    ! Set default AED2 link options
    aed2_nml_file = 'aed2.nml'
@@ -193,7 +193,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    ! Process input file (aed2.nml) to get run options
    IF ( aed2_init_core(dname) /= 0 ) STOP "Initialisation of aed2_core failed"
    tname = TRIM(dname)//'aed2.nml'
-   print *,"Reading aed2_models config from ",TRIM(tname)
+   print *,"    Reading aed2_models config from ",TRIM(tname)
    OPEN(namlst,file=tname,action='read',status='old',iostat=status)
    IF ( status /= 0 ) CALL STOPIT("Cannot open file " // TRIM(tname))
    READ(namlst,nml=aed2_bio,iostat=status)
@@ -231,7 +231,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
       ENDDO
 #endif
 #if DEBUG
-   print*,'AED2 init_aed2_models : n_aed2_vars = ',n_aed2_vars,' nwq_var = ',nwq_var,' nben_var ',nben_var
+   print*,'    AED2 init_aed2_models : n_aed2_vars = ',n_aed2_vars,' nwq_var = ',nwq_var,' nben_var ',nben_var
 #endif
 
    CALL check_data
@@ -267,7 +267,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
             bennames(j) = TRIM(tvar%name)
             min_(nwq_var+j) = tvar%minimum
             max_(nwq_var+j) = tvar%maximum
-            print *,"AED2 var_ben name(",j,") : ", TRIM(bennames(j))
+            print *,"     (",j,") AED2 var_ben name: ", TRIM(bennames(j))
          ENDIF
       ENDIF
    ENDDO
@@ -309,7 +309,7 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    nwq = n_vars
    nwqben = n_vars_ben
 
-   print *,'init_var_aed2_models : nwq = ',nwq,' nwqben = ',nwqben
+   print *,'    init_var_aed2_models : nwq = ',nwq,' nwqben = ',nwqben
 
    cc => cc_
    cc_diag => cc_diag_
@@ -438,7 +438,7 @@ CONTAINS
    !----------------------------------------------------------------------------
       unit = aed_csv_read_header(init_values_file, csvnames, nccols)
       IF (unit <= 0) RETURN !# No file found
-      print *,'benthic vars initialised from file : ', TRIM(init_values_file)
+      print *,'    spatial initialisation of AED2 vars from file : ', TRIM(init_values_file)
       DO ccol=1,nccols
          IF ( csvnames(ccol) == "ID" ) THEN
             idx_col = ccol
@@ -471,7 +471,8 @@ CONTAINS
                      IF (tv%diag) THEN
                         numd = numd + 1
                         dmap(numd) = ccol
-! IF ( same_str_icase(tv%name, "LND_phreatic") ) THEN ; phreat_id = av ; phreat_col = ccol ; phreat_var = d ; ENDIF
+                      ! IF ( same_str_icase(tv%name, "LND_phreatic") ) THEN
+                      ! phreat_id = av ; phreat_col = ccol ; phreat_var = d ; ENDIF
                         dvar(numd) = d
                         dsheet(numd) = tv%sheet
                      ELSE
@@ -482,7 +483,7 @@ CONTAINS
                         ELSE
                            vars(numv) = v
                         ENDIF
-                        vsheet(numd) = tv%sheet
+                        vsheet(numv) = tv%sheet
                      ENDIF
                   ENDIF
                ENDDO
@@ -501,7 +502,8 @@ CONTAINS
             ENDDO
             DO v=1,numd
                IF ( dmap(v) == 0 ) CYCLE
-! IF (dmap(v) == phreat_col ) print*, " XXX setting phreat_col ", phreat_var
+               ! IF (dmap(v) == phreat_col ) &
+               ! print*, " XXX setting phreat_col ", phreat_var
                If ( vsheet(v) ) THEN
                   cc_diag(dvar(v), bm(t)) = extract_double(values(dmap(v)))
                ELSE
