@@ -193,7 +193,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    ! Process input file (aed2.nml) to get run options
    IF ( aed2_init_core(dname) /= 0 ) STOP "Initialisation of aed2_core failed"
    tname = TRIM(dname)//'aed2.nml'
-   print *,"    Reading aed2_models config from ",TRIM(tname)
+   print *,"    reading aed2_models config from ",TRIM(tname)
    OPEN(namlst,file=tname,action='read',status='old',iostat=status)
    IF ( status /= 0 ) CALL STOPIT("Cannot open file " // TRIM(tname))
    READ(namlst,nml=aed2_bio,iostat=status)
@@ -231,7 +231,8 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
       ENDDO
 #endif
 #if DEBUG
-   print*,'    AED2 init_aed2_models : n_aed2_vars = ',n_aed2_vars,' nwq_var = ',nwq_var,' nben_var ',nben_var
+   print*,'    init_aed2_models : n_aed2_vars = ',n_aed2_vars,&
+          ' nwq_var = ',nwq_var,' nben_var ',nben_var
 #endif
 
    CALL check_data
@@ -254,7 +255,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
             names(j) = TRIM(tvar%name)
             min_(j) = tvar%minimum
             max_(j) = tvar%maximum
-            print *,"AED2 var name(",j,") : ", TRIM(names(j))
+            print *,"     S(",j,") AED2 pelagic(3D) variable: ", TRIM(names(j))
          ENDIF
       ENDIF
    ENDDO
@@ -267,7 +268,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
             bennames(j) = TRIM(tvar%name)
             min_(nwq_var+j) = tvar%minimum
             max_(nwq_var+j) = tvar%maximum
-            print *,"     (",j,") AED2 var_ben name: ", TRIM(bennames(j))
+            print *,"     B(",j,") AED2 benthic(2D) variable ", TRIM(bennames(j))
          ENDIF
       ENDIF
    ENDDO
@@ -278,7 +279,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
          IF ( tvar%diag ) THEN
             j = j + 1
             diagnames(j) = TRIM(tvar%name)
-            print *,"AED2 diag name(",j,") : ", trim(diagnames(j))
+            print *,"     D(",j,") AED2 diagnostic variable  ", TRIM(diagnames(j))
          ENDIF
       ENDIF
    ENDDO
@@ -438,7 +439,7 @@ CONTAINS
    !----------------------------------------------------------------------------
       unit = aed_csv_read_header(init_values_file, csvnames, nccols)
       IF (unit <= 0) RETURN !# No file found
-      print *,'    spatial initialisation of AED2 vars from file : ', TRIM(init_values_file)
+      print *,'    spatial AED2 var initialisation from file: ', TRIM(init_values_file)
       DO ccol=1,nccols
          IF ( csvnames(ccol) == "ID" ) THEN
             idx_col = ccol
@@ -543,7 +544,7 @@ CONTAINS
    !----------------------------------------------------------------------------
       unit = aed_csv_read_header(route_table_file, csvnames, nccols)
       IF (unit <= 0) RETURN !# No file found
-      print *,'routing table initialised from file : ', TRIM(route_table_file)
+      print *,'    riparian cell routing set from file: ', TRIM(route_table_file)
 !# The format of the file should be me, "lowest ajoining" - ie always 2 colums
 !# and always in the order - and we dont really care about the header, but being
 !# csv it should have it so we read but ignore it.
@@ -569,7 +570,7 @@ CONTAINS
       DO WHILE ( aed_csv_read_row(unit, values) )
          crow = crow + 1
          IF ( crow > nrows ) THEN
-            print*, "routing table has more rows than expected - extras ignored"
+            print*, "        routing table has more rows than expected - extras ignored"
          ENDIF
          t = extract_integer(values(idx_col))
          route_table(crow) = extract_integer(values(2))
@@ -577,7 +578,8 @@ CONTAINS
          !MH PUT A CHECK HERE TO MAKE SURE NO CIRCULAR REFERENCE
       ENDDO
 
-      IF ( crow < nrows ) print*, "routing table has less rows than expected?",nrows
+      IF ( crow < nrows ) &
+      print*, "        routing table has less rows than expected? ",crow,"/",nrows
 
       meh = aed_csv_close(unit)
       !# don't care if close fails
@@ -633,8 +635,6 @@ SUBROUTINE set_env_aed2_models(dt_,              &
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: wv_uorb_, wv_t_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: rain_, bathy_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: air_temp_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: biodrag_, ustar_surf_, solarshade_, rainloss_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: wv_uorb_, wv_t_
    INTEGER,  INTENT(in), DIMENSION(:,:), POINTER :: mat_id_
    LOGICAL,  INTENT(in), DIMENSION(:),   POINTER :: active_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: biodrag_, solarshade_, rainloss_
@@ -646,7 +646,7 @@ SUBROUTINE set_env_aed2_models(dt_,              &
 !
 !-------------------------------------------------------------------------------
 !BEGIN
-   print *,'set_env_aed2_models  '
+   print *,'    set_env_aed2_models : linking to host environment vars '
 
    !# Provide pointers to arrays with environmental variables to AED2.
    dt = dt_
