@@ -168,7 +168,8 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
 !
 !-------------------------------------------------------------------------------
 !BEGIN
-   print *, "*** using fv_aed2 version ", TRIM(FV_AED_VERS)
+   print *, " "
+   print *, "    using fv_aed2 version ", TRIM(FV_AED_VERS)
 
    ! Set default AED2 link options
    aed2_nml_file = 'aed2.nml'
@@ -191,6 +192,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    link_wave_stress = .false.
 
    ! Process input file (aed2.nml) to get run options
+   print *, "    initialise aed2_core "
    IF ( aed2_init_core(dname) /= 0 ) STOP "Initialisation of aed2_core failed"
    tname = TRIM(dname)//'aed2.nml'
    print *,"    reading aed2_models config from ",TRIM(tname)
@@ -202,15 +204,15 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    Ksed = tss_par_extinction
    IF ( do_zone_averaging ) old_zones = .FALSE.
    print *,'    link options configured between TFV & AED2 - '
-   print *.'        link_ext_par       :  ',link_ext_par
-   print *.'        link_water_clarity :  ',link_water_clarity
-   print *.'        link_surface_drag  :  ',link_surface_drag,' (not active)'
-   print *.'        link_bottom_drag   :  ',link_bottom_drag
-   print *.'        link_wave_stress   :  ',link_wave_stress
-   print *.'        link_solar_shade   :  ',link_solar_shade
-   print *.'        link_rain_loss     :  ',link_rain_loss
-   print *.'        link_particle_bgc  :  ',do_particle_bgc,' (not active)'
-   print *.'        link_water_density :  ',link_water_density,' (not active)'
+   print *,'        link_ext_par       :  ',link_ext_par
+   print *,'        link_water_clarity :  ',link_water_clarity
+   print *,'        link_surface_drag  :  ',link_surface_drag,' (not active)'
+   print *,'        link_bottom_drag   :  ',link_bottom_drag
+   print *,'        link_wave_stress   :  ',link_wave_stress
+   print *,'        link_solar_shade   :  ',link_solar_shade
+   print *,'        link_rain_loss     :  ',link_rain_loss
+   print *,'        link_particle_bgc  :  ',do_particle_bgc,' (not active)'
+   print *,'        link_water_density :  ',link_water_density,' (not active)'
 
    ! Process input file (aed2.nml) to get selected models
    models = ''
@@ -257,7 +259,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
 
    ALLOCATE(min_(1:nwq_var+nben_var)) ; ALLOCATE(max_(1:nwq_var+nben_var))
 
-   print *,"     configured variables: "
+   print *,"    configured variables - "
    j = 0
    DO i=1,n_aed2_vars
       IF ( aed2_get_var(i, tvar) ) THEN
