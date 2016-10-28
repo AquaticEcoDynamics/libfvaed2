@@ -1081,7 +1081,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    TYPE (aed2_column_t) :: column(n_aed2_vars)
 
    INTEGER  :: i, j, col, lev, top, bot, v, na
-   AED_REAL :: rain_loss,
+   AED_REAL :: rain_loss
    LOGICAL  :: aed_active_col
 !
 !-------------------------------------------------------------------------------
@@ -1143,8 +1143,8 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
             IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) ) THEN
-               print *,'ws',ws(top:bot)
-               CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot), Fsed_setl(col), column(i)%cell)
+               print *,'ws',ws(top:bot,i)
+               CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot,i), Fsed_setl(col), column(i)%cell)
             ENDIF
          ENDIF
       ENDDO
