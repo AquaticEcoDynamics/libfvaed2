@@ -23,12 +23,15 @@
 !#                                                                             #
 !# Created Aug 2013                                                            #
 !# Update Mar 2016: Add new env variables and feedback links                   #
+!# Update Jun 2016: Add riparian exchange functionality                        #
+!# Update Aug 2016: Add links for getting wave stress                          #
+!# Update Oct 2016: Add variable mbility support                               #
 !#                                                                             #
 !###############################################################################
 
 #include "aed2.h"
 
-#define FV_AED_VERS "0.9.28"
+#define FV_AED_VERS "0.9.30"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -62,19 +65,24 @@ MODULE fv_aed2
    !# Array pointing to the lagrangian particle masses and diagnostic properties
    AED_REAL,DIMENSION(:,:),POINTER :: pp, pp_diag
 
-   !# Name of file being used to load initial values for benthic or benthic_diag vars
+   !# Name of files being used to load initial values for benthic
+   !  or benthic_diag vars, and the horizontal routing table for riparian flows
    CHARACTER(len=128) :: init_values_file = ''
    CHARACTER(len=128) :: route_table_file = ''
 
    !# Maps of surface, bottom and wet/dry (active) cells
-   LOGICAL,DIMENSION(:),POINTER :: active
-   !# Previous active state
-!  LOGICAL,DIMENSION(:),ALLOCATABLE :: pactive
    INTEGER,DIMENSION(:),POINTER :: surf_map, benth_map
+   LOGICAL,DIMENSION(:),POINTER :: active
 
-   !# Arrays for work, vertical movement, and cross-boundary fluxes
-   AED_REAL,ALLOCATABLE,DIMENSION(:,:) :: flux
-   AED_REAL,ALLOCATABLE,DIMENSION(:)   :: ws, total
+   !# Maps to nearest cell with water (for riparian exchange)
+   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_active
+   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_depth
+   INTEGER, DIMENSION(:), ALLOCATABLE       :: route_table
+
+   !# Arrays for work, vertical movement (ws), and cross-boundary fluxes
+   AED_REAL,ALLOCATABLE,DIMENSION(:,:) :: flux, ws
+   AED_REAL,ALLOCATABLE,DIMENSION(:)   :: total
+   AED_REAL,ALLOCATABLE,DIMENSION(:)   :: Fsed_setl
    AED_REAL,ALLOCATABLE,DIMENSION(:)   :: min_, max_
 
    !# Arrays for environmental variables (used if they are not supplied externally)
@@ -83,48 +91,43 @@ MODULE fv_aed2
    AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: uva
    AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: uvb
    AED_REAL,DIMENSION(:),POINTER :: lpar
-   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_active
-   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_depth
-
-   AED_REAL,TARGET :: col_taub  ! a temp var for the taub for column (computed from ustar_bed)
+   AED_REAL,TARGET :: col_taub  ! a temp var for bottom stress (computed from ustar_bed)
 
    !# External variables
    AED_REAL :: dt
+   INTEGER, DIMENSION(:,:),POINTER :: mat
+   AED_REAL,DIMENSION(:,:),POINTER :: rad
    AED_REAL,DIMENSION(:),  POINTER :: temp, salt, rho, nuh, h, z
    AED_REAL,DIMENSION(:),  POINTER :: extcoeff, tss, bio_drag
    AED_REAL,DIMENSION(:),  POINTER :: I_0, wnd, air_temp, rain
    AED_REAL,DIMENSION(:),  POINTER :: area, bathy, shadefrac, rainloss
-   AED_REAL,DIMENSION(:),  POINTER :: Fsed_setl, ustar_bed, wv_uorb, wv_t
-   AED_REAL,DIMENSION(:,:),POINTER :: rad
-   INTEGER, DIMENSION(:,:),POINTER :: mat
-
-   INTEGER, DIMENSION(:), ALLOCATABLE :: route_table
+   AED_REAL,DIMENSION(:),  POINTER :: ustar_bed
+   AED_REAL,DIMENSION(:),  POINTER :: wv_uorb, wv_t
 
    !# maximum single precision real is 2**128 = 3.4e38
    AED_REAL :: glob_min = -1.0e38
    AED_REAL :: glob_max =  1.0e38
 
+   !# Misc variables/options
    AED_REAL :: min_water_depth =  0.0401
    AED_REAL :: wave_factor =  1.0
+   LOGICAL  :: old_zones = .TRUE.
+   LOGICAL  :: do_zone_averaging = .FALSE.
+   LOGICAL  :: request_nearest = .FALSE.
+   LOGICAL  :: reinited = .FALSE.
+   INTEGER  :: ThisStep = 0, n_equil_substep = 1
 
    !# Switches for configuring model operation and active links with the host model
-   LOGICAL :: link_water_clarity, link_water_density,                          &
-              link_bottom_drag, link_surface_drag,                             &
-              link_ext_par, ext_tss_extinction,                                &
-              link_solar_shade, link_rain_loss,                                &
+   LOGICAL :: link_water_clarity, link_water_density, &
+              link_bottom_drag, link_surface_drag, &
+              link_ext_par, ext_tss_extinction, &
+              link_solar_shade, link_rain_loss, &
               do_limiter, no_glob_lim, do_2d_atm_flux, do_particle_bgc, &
               link_wave_stress
 
-   LOGICAL :: old_zones = .TRUE.
-   LOGICAL :: do_zone_averaging = .FALSE.
-   LOGICAL :: request_nearest = .FALSE.
-   LOGICAL :: reinited = .FALSE.
-
-   INTEGER :: ThisStep = 0, n_equil_substep = 1
-!  INTEGER :: phreat_id = 0, phreat_col = 0, phreat_var = 0
-
    !# Integers storing number of variables being simulated
    INTEGER :: n_aed2_vars, n_vars, n_vars_ben, n_vars_diag, n_vars_diag_sheet
+
 
 CONTAINS
 !===============================================================================
@@ -145,12 +148,11 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    CHARACTER(len=30),ALLOCATABLE,INTENT(out) :: diagnames(:)
 !
 !LOCALS
-   CHARACTER(len=128) :: aed2_nml_file
-   CHARACTER(len=128) :: tname
-   AED_REAL           :: base_par_extinction, tss_par_extinction
-   INTEGER            :: status
-   INTEGER            :: n_sd, i, j
    TYPE(aed2_variable_t),POINTER :: tvar
+   CHARACTER(len=128)            :: aed2_nml_file
+   CHARACTER(len=128)            :: tname
+   AED_REAL                      :: base_par_extinction, tss_par_extinction
+   INTEGER                       :: status, n_sd, i, j
 
    CHARACTER(len=64) :: models(64)
    NAMELIST /aed2_models/ models
@@ -1034,7 +1036,7 @@ END SUBROUTINE check_states
 
 
 !###############################################################################
-SUBROUTINE FillNearest(nCols)
+SUBROUTINE fill_nearest(nCols)
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    INTEGER, INTENT(in) :: nCols
@@ -1056,13 +1058,14 @@ SUBROUTINE FillNearest(nCols)
                k = route_table(k)
             ENDDO
             nearest_active(col) = k
-            nearest_depth(col) = h(benth_map(k)) + bathy(k) ! this needs fixing to sum over top:bot, as h is layer thicknesses, not references to datum
+            nearest_depth(col) = h(benth_map(k)) + bathy(k)
+            ! this needs fixing to sum over top:bot, as h is layer thicknesses, not references to datum
          ENDIF
       ENDDO
    ELSE
       nearest_active = 0.
    ENDIF
-END SUBROUTINE FillNearest
+END SUBROUTINE fill_nearest
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -1088,9 +1091,11 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 !BEGIN
 ! print *," START do_aed2_models"
 
+   !#--------------------------------------------------------------------
+   !# START-UP JOBS
    rainloss = zero_
 
-   IF ( request_nearest ) CALL FillNearest(nCols)
+   IF ( request_nearest ) CALL fill_nearest(nCols)
 
    IF ( .not. reinited ) CALL re_initialize()
 
@@ -1103,7 +1108,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
          CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, lpar, tss, active, rain)
       ENDIF
    ENDIF
-
 
 !!$OMP DO
    !#--------------------------------------------------------------------
@@ -1119,7 +1123,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       ! set column data
       CALL define_column(column, col, cc, cc_diag, flux, flux_atm, flux_ben, flux_rip)
 
-      ! compute settling/mobility
+      ! compute vertical settling/mobility
       v = 0
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
@@ -1128,21 +1132,21 @@ SUBROUTINE do_aed2_models(nCells, nCols)
                ! only for state_vars that are not sheet
                IF ( .NOT. isnan(tv%mobility) ) THEN
                   ! default to ws that was set during initialisation
-                  ws(top:bot) = tv%mobility
-                  DO lev = top, bot
-                    ! update ws for modules that use the mobility method
-                    CALL aed2_mobility(column, top, ws(lev,:))
-                  ENDDO
+                  ws(top:bot,i) = tv%mobility
                ELSE
                   ! zero nan values
-                  ws(top:bot) = zero_
+                  ws(top:bot,i) = zero_
                ENDIF
             ENDIF
          ENDIF
       ENDDO
+      DO lev = top, bot
+        ! update ws for modules that use the mobility method
+        CALL aed2_mobility(column, top, ws(lev,:))
+      ENDDO
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
-            IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) ) THEN
+            IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) .AND. SUM(ABS(ws(top:bot,i)))>zero_ ) THEN
                print *,'ws',ws(top:bot,i)
                CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot,i), Fsed_setl(col), column(i)%cell)
             ENDIF
@@ -1370,18 +1374,18 @@ END SUBROUTINE Light
 
 
 !###############################################################################
-SUBROUTINE Settling(N,dt,h,ww,Fsed,Y)
+SUBROUTINE Settling(N,dt,h,wvel,Fsed,Y)
 !-------------------------------------------------------------------------------
 !
 ! Update settling of AED2 state variables in a given column
 !
 !-------------------------------------------------------------------------------
 !ARGUMENTS
-   INTEGER,INTENT(in)     :: N      !# number of vertical layers
-   AED_REAL,INTENT(in)    :: dt     !# time step (s)
-   AED_REAL,INTENT(in)    :: h(:)   !# layer thickness (m)
-   AED_REAL,INTENT(in)    :: ww(:)  !# vertical advection speed
-   AED_REAL,INTENT(inout) :: Fsed   !# value of sediment flux due to settling
+   INTEGER,INTENT(in)     :: N       !# number of vertical layers
+   AED_REAL,INTENT(in)    :: dt      !# time step (s)
+   AED_REAL,INTENT(in)    :: h(:)    !# layer thickness (m)
+   AED_REAL,INTENT(in)    :: wvel(:) !# vertical advection speed
+   AED_REAL,INTENT(inout) :: Fsed    !# value of sediment input due to settling
    AED_REAL,INTENT(inout) :: Y(:)
 !
 !CONSTANTS
@@ -1401,16 +1405,16 @@ SUBROUTINE Settling(N,dt,h,ww,Fsed,Y)
    cmax = 0. !# initialize maximum Courant number
 
    !# compute maximum Courant number
-   !# calculated as number of layers that the particles will travel based on settling or
-   !# buoyancy velocity
-   !# this number is then used to split the vertical movement calculations to limit
-   !# movement across a single layer
+   !      calculated as number of layers that the particles will travel based
+   !      on settling or buoyancy velocity.
+   !      This number is then used to split the vertical movement
+   !      calculations to limit movement across a single layer
    DO k=1,N-1
       !# sinking particles
-      c=abs(ww(k+1))*dt/(0.5*(h(k+1)+h(k)))
+      c=abs(wvel(k+1))*dt/(0.5*(h(k+1)+h(k)))
       IF (c > cmax) cmax=c
       !# rising particles
-      c=abs(ww(k))*dt/(0.5*(h(k+1)+h(k)))
+      c=abs(wvel(k))*dt/(0.5*(h(k+1)+h(k)))
       IF (c > cmax) cmax=c
    ENDDO
 
@@ -1418,28 +1422,28 @@ SUBROUTINE Settling(N,dt,h,ww,Fsed,Y)
    step_dt = dt / float(it);
 
    !# splitting loop
-   DO i=1, it
+   DO i = 1,it
       !# vertical loop
       DO k=1,N-1
-         !# compute the slope ration
-         IF (ww(k) > 0.) THEN !# Particle is rising
-            Yc=Y(k  )     !# central value
+         !# compute the slope ratio
+         IF (wvel(k) > 0.) THEN !# Particle is rising
+            Yc=Y(k)       !# central value
          ELSE !# negative speed Particle is sinking
             Yc=Y(k+1)     !# central value
          ENDIF
 
          !# compute the limited flux
-         cu(k)=ww(k) * Yc
+         cu(k)=wvel(k) * Yc
       ENDDO
 
       !# do the upper boundary conditions
-      cu(N) = zero_       !# flux into the domain from atmosphere
+      cu(N) = zero_       !# limit flux into the domain from atmosphere
 
       !# do the lower boundary conditions
-      IF (ww(1) > 0.) THEN !# Particle is rising
+      IF (wvel(1) > 0.) THEN !# Particle is rising
          cu(0) = 0.  !flux from benthos is zero
       ELSE  !# Particle is settling
-         cu(0) = ww(1)*Y(1)
+         cu(0) = wvel(1)*Y(1)
          Fsed = cu(0) * step_dt !# flux settled into the sediments per sub time step
       ENDIF
       !# do the vertical advection step including positive migration
@@ -1457,8 +1461,8 @@ END SUBROUTINE Settling
 LOGICAL FUNCTION Riparian(column, actv, shade_frac, rain_loss)
 !-------------------------------------------------------------------------------
 !
-! Do riparian functionality, including operations in dry and fringing cells
-! Populate feedback arrays to the hoist model associated with riparian effects
+! Do riparian functionality, including operations in dry and fringing cells &
+! populate feedback arrays to the host model associated with riparian effects
 !
 !-------------------------------------------------------------------------------
 !ARGUMENTS
@@ -1538,7 +1542,7 @@ SUBROUTINE Particles(column, count, h_)
 !BEGIN
    zz = zero_
 
-  ! CALL aed2_particle_bgc(column,1,ppid ...)
+ ! CALL aed2_particle_bgc(column,1,ppid ...)
    IF (count <= 1) RETURN
 
    DO i = 2, count
