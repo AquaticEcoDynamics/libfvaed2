@@ -337,9 +337,9 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    IF (.not. ASSOCIATED(cc_diag) ) STOP ' ERROR : no association for (cc_diag)'
    cc_diag = 0.
 
-   ! Allocate array with vertical movement rates (m/s, positive for upwards),
-   ! and set these to the values provided by the model.
-   ALLOCATE(ws(1:nCells),stat=rc)
+   ! Allocate array with vertical movement rates (m/s, positive for upwards)
+   ! These will be set the values provided by the modules
+   ALLOCATE(ws(1:nCells,1:n_aed2_vars),stat=rc)
    IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (ws)'
    ws = 0.
 
@@ -1077,7 +1077,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    AED_REAL :: tr
 
    AED_REAL :: flux_ben(n_vars+n_vars_ben), flux_atm(n_vars+n_vars_ben),       &
-               flux_rip(n_vars+n_vars_ben), mobility(n_vars+n_vars_ben)
+               flux_rip(n_vars+n_vars_ben)
    TYPE (aed2_column_t) :: column(n_aed2_vars)
 
    INTEGER  :: i, j, col, lev, top, bot, v, na
@@ -1109,35 +1109,42 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    !#--------------------------------------------------------------------
    !# LOOP THROUGH COLUMNS DOING JOBS PRIOR TO THE KINETICS BEING SOLVED
    DO col=1, nCols
+      ! move to next column if dry
       IF (.NOT. active(col)) CYCLE
 
+      ! identify cell indicies within the domain
       top = surf_map(col)
       bot = benth_map(col)
 
+      ! set column data
       CALL define_column(column, col, cc, cc_diag, flux, flux_atm, flux_ben, flux_rip)
 
-      !# See if there has been a change in active(wet/dry) state
-!     IF (active(col) .NE. pactive(col)) THEN
-!        IF (active(col)) THEN
-!        ELSE
-!           CYCLE
-!        ENDIF
-!     ENDIF
-
-      CALL aed2_mobility(column, 1, mobility)
-      print *,'mobility',mobility
-
-      !# Firstly run through ALL vars and select state vars
+      ! compute settling/mobility
       v = 0
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
             IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) ) THEN
                v = v + 1
-               !# only for state_vars that are not sheet
+               ! only for state_vars that are not sheet
                IF ( .NOT. isnan(tv%mobility) ) THEN
+                  ! default to ws that was set during initialisation
                   ws(top:bot) = tv%mobility
-                  CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot), Fsed_setl(col), column(i)%cell)
+                  DO lev = top, bot
+                    ! update ws for modules that use the mobility method
+                    CALL aed2_mobility(column, top, ws(lev,:))
+                  ENDDO
+               ELSE
+                  ! zero nan values
+                  ws(top:bot) = zero_
                ENDIF
+            ENDIF
+         ENDIF
+      ENDDO
+      DO i=1,n_aed2_vars
+         IF ( aed2_get_var(i, tv) ) THEN
+            IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) ) THEN
+               print *,'ws',ws(top:bot)
+               CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot), Fsed_setl(col), column(i)%cell)
             ENDIF
          ENDIF
       ENDDO
