@@ -197,7 +197,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    print *, "    initialise aed2_core "
    IF ( aed2_init_core(dname) /= 0 ) STOP "Initialisation of aed2_core failed"
    tname = TRIM(dname)//'aed2.nml'
-   print *,"    reading aed2_models config from ",TRIM(tname)
+   print *,"    reading fv_aed2 config from ",TRIM(tname)
    OPEN(namlst,file=tname,action='read',status='old',iostat=status)
    IF ( status /= 0 ) CALL STOPIT("Cannot open file " // TRIM(tname))
    READ(namlst,nml=aed2_bio,iostat=status)
@@ -217,6 +217,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    print *,'        link_water_density :  ',link_water_density,' (not active)'
 
    ! Process input file (aed2.nml) to get selected models
+   print *,"    reading aed2_models config from ",TRIM(tname)
    models = ''
    READ(namlst, nml=aed2_models, iostat=status)
    IF ( status /= 0 ) STOP "Cannot read namelist entry aed2_models"
@@ -1147,7 +1148,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
             IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) .AND. SUM(ABS(ws(top:bot,i)))>zero_ ) THEN
-               print *,'ws',ws(top:bot,i)
                CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot,i), Fsed_setl(col), column(i)%cell)
             ENDIF
          ENDIF
