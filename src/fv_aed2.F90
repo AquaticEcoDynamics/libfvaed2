@@ -31,7 +31,7 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "0.9.30"
+#define FV_AED_VERS "0.9.31"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -1084,7 +1084,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
                flux_rip(n_vars+n_vars_ben)
    TYPE (aed2_column_t) :: column(n_aed2_vars)
 
-   INTEGER  :: i, j, col, lev, top, bot, v, na
+   INTEGER  :: i, j, col, lev, top, bot, v, na, d
    AED_REAL :: rain_loss
    LOGICAL  :: aed_active_col
 !
@@ -1143,7 +1143,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       ENDDO
       DO lev = top, bot
         ! update ws for modules that use the mobility method
-        CALL aed2_mobility(column, top, ws(lev,:))
+        CALL aed2_mobility(column, lev-top+1, ws(lev,:))
       ENDDO
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
@@ -1241,6 +1241,12 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 #endif
          ENDDO ! vars
       ENDDO  ! levels
+
+      !# benthic state variables  
+      DO i = n_vars+1, n_vars+n_vars_ben
+        cc(i,bot)=cc(i,bot)+dt*flux_ben(i)
+      ENDDO
+
       !# add riparian flux
       IF ( do_zone_averaging ) THEN ! Untested
          DO i = n_vars+1, n_vars+n_vars_ben
@@ -1278,6 +1284,18 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
    IF ( ThisStep >= n_equil_substep ) ThisStep = 0
 
+      v = 0; d = 0
+      DO i=1,n_aed2_vars
+         IF ( aed2_get_var(i, tv) ) THEN
+            IF ( .NOT. (tv%diag .OR. tv%extern) ) THEN
+               v = v + 1
+               print *,'VarLims',v,TRIM(tv%name),MINVAL(cc(v,:)),MAXVAL(cc(v,:))
+            ELSE IF ( tv%diag .AND. .NOT. no_glob_lim ) THEN
+               d = d + 1
+               print *,'DiagLim',d,TRIM(tv%name),MINVAL(cc_diag(d,:)),MAXVAL(cc_diag(d,:))
+            ENDIF
+         ENDIF
+      ENDDO
 
 CONTAINS
 
