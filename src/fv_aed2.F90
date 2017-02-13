@@ -123,7 +123,7 @@ MODULE fv_aed2
               link_ext_par, ext_tss_extinction, &
               link_solar_shade, link_rain_loss, &
               do_limiter, no_glob_lim, do_2d_atm_flux, do_particle_bgc, &
-              link_wave_stress
+              link_wave_stress, display_minmax
 
    !# Integers storing number of variables being simulated
    INTEGER :: n_aed2_vars, n_vars, n_vars_ben, n_vars_diag, n_vars_diag_sheet
@@ -166,7 +166,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
                        link_solar_shade, link_rain_loss, init_values_file,     &
                        do_limiter, glob_min, glob_max, no_glob_lim,            &
                        route_table_file, n_equil_substep, min_water_depth,     &
-                       link_wave_stress, wave_factor
+                       link_wave_stress, wave_factor, display_minmax
 !
 !-------------------------------------------------------------------------------
 !BEGIN
@@ -192,6 +192,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    do_particle_bgc = .false.
    min_water_depth = 0.0401
    link_wave_stress = .false.
+   display_minmax = .false.
 
    ! Process input file (aed2.nml) to get run options
    print *, "    initialise aed2_core "
@@ -1242,7 +1243,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
          ENDDO ! vars
       ENDDO  ! levels
 
-      !# benthic state variables  
+      !# benthic state variables
       DO i = n_vars+1, n_vars+n_vars_ben
         cc(i,bot)=cc(i,bot)+dt*flux_ben(i)
       ENDDO
@@ -1284,18 +1285,22 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
    IF ( ThisStep >= n_equil_substep ) ThisStep = 0
 
+   IF ( display_minmax ) THEN
       v = 0; d = 0
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
             IF ( .NOT. (tv%diag .OR. tv%extern) ) THEN
                v = v + 1
-               print *,'VarLims',v,TRIM(tv%name),MINVAL(cc(v,:)),MAXVAL(cc(v,:))
+               WRITE(*,'(1X,"VarLims: ",I0,1X,"<=> ",f15.8,f15.8," : ",A)')v,MINVAL(cc(v,:)),MAXVAL(cc(v,:)),TRIM(tv%name)
+               !print *,'VarLims',v,TRIM(tv%name),MINVAL(cc(v,:)),MAXVAL(cc(v,:))
             ELSE IF ( tv%diag .AND. .NOT. no_glob_lim ) THEN
                d = d + 1
-               print *,'DiagLim',d,TRIM(tv%name),MINVAL(cc_diag(d,:)),MAXVAL(cc_diag(d,:))
+               WRITE(*,'(1X,"DiagLim: ",I0,1X,"<=> ",f15.8,f15.8," : ",A)')d,MINVAL(cc_diag(d,:)),MAXVAL(cc_diag(d,:)),TRIM(tv%name)
+               !print *,'DiagLim',d,TRIM(tv%name),MINVAL(cc_diag(d,:)),MAXVAL(cc_diag(d,:))
             ENDIF
          ENDIF
       ENDDO
+    ENDIF
 
 CONTAINS
 
