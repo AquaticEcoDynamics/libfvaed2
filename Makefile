@@ -41,6 +41,10 @@ LIBS+=-lnetcdff -lnetcdf
 
 FFLAGS+=$(OPT_FFLAGS)
 
+ifeq ($(DEBUG),true)
+  FFLAGS+=$(DEBUG_FFLAGS)
+endif
+
 ifeq ($(PRECISION),1)
   TFFLAGS += -D_PRECISION=1
 else ifeq ($(PRECISION),2)
