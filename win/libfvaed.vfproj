@@ -4,8 +4,8 @@
 		<Platform Name="Win32"/>
 		<Platform Name="x64"/></Platforms>
 	<Configurations>
-		<Configuration Name="Debug|Win32" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI" StandardWarnings="standardWarningsF03" Diagnostics="diagnosticsShowAll" WarnInterfaces="true" FloatingPointModel="source" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" StackFrameCheck="true"/>
+		<Configuration Name="Debug|Win32" OutputDirectory="..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI" StandardWarnings="standardWarningsF03" Diagnostics="diagnosticsShowAll" WarnInterfaces="true" FloatingPointModel="source" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" StackFrameCheck="true"/>
 				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
@@ -13,8 +13,8 @@
 				<Tool Name="VFPreLinkEventTool"/>
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
-		<Configuration Name="Release|Win32" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI" FloatingPointModel="source"/>
+		<Configuration Name="Release|Win32" OutputDirectory="..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI" FloatingPointModel="source"/>
 				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
@@ -22,8 +22,8 @@
 				<Tool Name="VFPreLinkEventTool"/>
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
-		<Configuration Name="Debug|x64" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI" StandardWarnings="standardWarningsF03" Diagnostics="diagnosticsShowAll" WarnInterfaces="true" FloatingPointModel="source" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" StackFrameCheck="true"/>
+		<Configuration Name="Debug|x64" OutputDirectory="..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI" StandardWarnings="standardWarningsF03" Diagnostics="diagnosticsShowAll" WarnInterfaces="true" FloatingPointModel="source" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" StackFrameCheck="true"/>
 				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -31,8 +31,8 @@
 				<Tool Name="VFPreLinkEventTool"/>
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
-		<Configuration Name="Release|x64" OutputDirectory="..\..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI"/>
+		<Configuration Name="Release|x64" OutputDirectory="..\lib" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\libaed2\include" PreprocessorDefinitions="MPI=OPENMPI"/>
 				<Tool Name="VFLinkerTool" SuppressStartupBanner="true"/>
 				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(OutDir)/"/>
 				<Tool Name="VFResourceCompilerTool"/>
@@ -47,6 +47,6 @@
 		<File RelativePath="..\..\libaed2\include\aed2.h"/></Filter>
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
-		<File RelativePath="..\..\src\fv_aed2.F90"/>
-		<File RelativePath="..\..\src\fv_zones.F90"/></Filter></Files>
+		<File RelativePath="..\src\fv_aed2.F90"/>
+		<File RelativePath="..\src\fv_zones.F90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

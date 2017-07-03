@@ -11,7 +11,7 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libfvaed", "libfvaed.vfproj
 		{71B1A1B7-387A-4D58-8607-F9B24B896995} = {71B1A1B7-387A-4D58-8607-F9B24B896995}
 	EndProjectSection
 EndProject
-Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libaed2+", "..\..\..\libaed2-plus\win\libaed2+.vfproj", "{71B1A1B7-387A-4D58-8607-F9B24B896995}"
+Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libaed2+", "..\..\libaed2-plus\win\libaed2+.vfproj", "{71B1A1B7-387A-4D58-8607-F9B24B896995}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
