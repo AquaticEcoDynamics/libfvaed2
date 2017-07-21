@@ -202,7 +202,6 @@ SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, 
    zone_rain = zone_rain / zone_count
    zone_I_0  =  zone_I_0 / zone_count
    zone_taub = zone_taub / zone_count
-
 END SUBROUTINE calc_zone_areas
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -269,7 +268,7 @@ SUBROUTINE STOPIT(message)
    CHARACTER(*) :: message
 !-------------------------------------------------------------------------------
    PRINT *,message
-   STOP
+   STOP "Fatal Error"
 END SUBROUTINE STOPIT
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -307,7 +306,7 @@ SUBROUTINE define_column_zone(column, zon, n_aed2_vars)!, n_vars)
        !    CASE ( 'bathy' )       ; column(av)%cell_sheet => zone_bathy(zon)
             CASE ( 'extc_coef' )   ; column(av)%cell => zone_extc
             CASE ( 'tss' )         ; column(av)%cell => zone_tss
-       !    CASE ( 'par' )         ; column(av)%cell => zone_par
+            CASE ( 'par' )         ; column(av)%cell => zone_par
        !    CASE ( 'par' )         ; IF (link_ext_par) THEN
        !                                column(av)%cell => lpar(top:bot)
        !                             ELSE

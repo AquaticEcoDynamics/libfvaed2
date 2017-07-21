@@ -31,7 +31,7 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "0.9.31"
+#define FV_AED_VERS "0.9.32"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -701,11 +701,7 @@ SUBROUTINE set_env_aed2_models(dt_,              &
    tss => tss_
    active => active_
 
-   IF (link_ext_par) THEN
-      lpar => rad_(1,:)
-   ENDIF
-
-
+   IF (link_ext_par) lpar => rad_(1,:)
 
 !  ALLOCATE(pactive(size(active)))
 !  pactive = active
@@ -1106,9 +1102,9 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
    IF ( do_zone_averaging ) THEN
       IF (link_ext_par) THEN
-         CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, par, tss, active, rain)
-      ELSE
          CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, lpar, tss, active, rain)
+      ELSE
+         CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, par, tss, active, rain)
       ENDIF
    ENDIF
 
