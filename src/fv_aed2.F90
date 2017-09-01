@@ -31,7 +31,7 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "0.9.32"
+#define FV_AED_VERS "0.9.34"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -1085,6 +1085,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    INTEGER  :: i, j, col, lev, top, bot, v, na, d
    AED_REAL :: rain_loss
    LOGICAL  :: aed_active_col
+   AED_REAL,DIMENSION(:),POINTER :: tpar
 !
 !-------------------------------------------------------------------------------
 !BEGIN
@@ -1102,10 +1103,12 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
    IF ( do_zone_averaging ) THEN
       IF (link_ext_par) THEN
-         CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, lpar, tss, active, rain)
+         tpar => lpar
       ELSE
-         CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, par, tss, active, rain)
+         tpar => par
       ENDIF
+      CALL calc_zone_areas(nCols, active, temp, salt, h, area, wnd, rho,       &
+                 extcoeff, I_0, tpar, tss, rain, rainloss, air_temp, bathy, col_taub)
    ENDIF
 
 !!$OMP DO
@@ -1178,7 +1181,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       bot = benth_map(col)
 
       !# compute bottom shear stress for this column based on ustar from host
-      !col_taub = rho(bot)*(ustar_bed(col)*ustar_bed(col))
+      col_taub = rho(bot)*(ustar_bed(col)*ustar_bed(col))
       IF ( link_wave_stress .AND. ASSOCIATED(wv_uorb) .AND. ASSOCIATED(wv_t) ) THEN
          CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col),wv_uorb(col),wv_t(col))
       ELSE
@@ -1278,7 +1281,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 !!$OMP END DO
 
    IF ( do_zone_averaging ) &
-      CALL copy_to_zone(nCols, cc, area, active, benth_map)
+      CALL copy_from_zone(nCols, cc, area, active, benth_map)
 
    IF ( ThisStep >= n_equil_substep ) ThisStep = 0
 

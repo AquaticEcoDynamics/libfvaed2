@@ -55,10 +55,16 @@ MODULE fv_zones
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_extc
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_tss
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_par
+   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_nir
+   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_uva
+   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_uvb
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_wind
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_rain
+   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_rainloss
+   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_air_temp
+   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_bathy
    AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_I_0
-   AED_REAL,DIMENSION(:),  ALLOCATABLE,TARGET :: zone_taub
+   AED_REAL,TARGET :: zone_taub
    INTEGER, DIMENSION(:),  ALLOCATABLE        :: zone_count, zm
 
    AED_REAL,DIMENSION(:,:),ALLOCATABLE,TARGET :: flux_pelz
@@ -111,10 +117,14 @@ SUBROUTINE init_zones(nCols, mat_id, n_aed2_vars, n_vars, n_vars_ben)
       zm(col) = zon
    ENDDO
    print*,"Number of mats = ", nTypes, " = ", mat_t(1:nTypes)
-   DEALLOCATE(mat_t)
    nZones = nTypes
 
    ALLOCATE(zone(nZones))
+   DO zon=1,nZones
+      zone(zon) = mat_t(zon)
+   ENDDO
+   DEALLOCATE(mat_t)
+
    ALLOCATE(zone_area(nZones))
    ALLOCATE(zone_temp(nZones))
    ALLOCATE(zone_salt(nZones))
@@ -124,10 +134,16 @@ SUBROUTINE init_zones(nCols, mat_id, n_aed2_vars, n_vars, n_vars_ben)
    ALLOCATE(zone_extc(nZones))
    ALLOCATE(zone_tss(nZones))
    ALLOCATE(zone_par(nZones))
+   ALLOCATE(zone_nir(nZones))
+   ALLOCATE(zone_uva(nZones))
+   ALLOCATE(zone_uvb(nZones))
    ALLOCATE(zone_wind(nZones))
    ALLOCATE(zone_rain(nZones))
+   ALLOCATE(zone_rainloss(nZones))
+   ALLOCATE(zone_air_temp(nZones))
+   ALLOCATE(zone_bathy(nZones))
    ALLOCATE(zone_I_0(nZones))
-   ALLOCATE(zone_taub(nZones))
+!  ALLOCATE(zone_taub(nZones))
 
    ALLOCATE(zone_count(nZones))
 
@@ -144,13 +160,17 @@ END SUBROUTINE init_zones
 
 
 !###############################################################################
-SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, par, tss, active, rain)
+SUBROUTINE calc_zone_areas(nCols, active, temp, salt, h, area, wnd, rho,       &
+                           extcoeff, I_0, par, tss, rain, rainloss, air_temp,  &
+                           bathy, col_taub)
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    INTEGER,INTENT(in) :: nCols
+   LOGICAL,DIMENSION(:), INTENT(in) :: active
    AED_REAL,DIMENSION(:),INTENT(in) :: temp, salt, h, area, wnd, rain
    AED_REAL,DIMENSION(:),INTENT(in) :: rho, extcoeff, I_0, par, tss
-   LOGICAL,DIMENSION(:), INTENT(in) :: active
+   AED_REAL,DIMENSION(:),INTENT(in) :: rainloss, air_temp, bathy
+   AED_REAL :: col_taub
 !
 !LOCALS
    INTEGER :: col, zon
@@ -167,28 +187,34 @@ SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, 
    zone_par = zero_
    zone_wind = zero_
    zone_rain = zero_
+   zone_rainloss = zero_
+   zone_air_temp = zero_
+   zone_bathy = zero_
    zone_I_0 = zero_
-   zone_taub = zero_
+   zone_taub = col_taub
    zone_count = 0
 
    DO col=1, nCols
       IF (.NOT. active(col)) CYCLE
 
       zon = zm(col)
-      zone_area(zon)   = zone_area(zon) + area(col)
-      zone_temp(zon)   = zone_temp(zon) + temp(col)
-      zone_salt(zon)   = zone_salt(zon) + salt(col)
-      zone_rho(zon)    = zone_rho(zon) + rho(col)
-      zone_height(zon) = zone_height(zon) + h(col)
-      zone_extc(zon)   = zone_extc(zon) + extcoeff(col)
-      zone_tss(zon)    = zone_tss(zon) + tss(col)
-      zone_par(zon)    = zone_par(zon) + par(col)
-      zone_wind(zon)   = zone_wind(zon) + wnd(col)
-      zone_rain(zon)   = zone_rain(zon) + rain(col)
-      zone_I_0(zon)    = zone_I_0(zon) + I_0(col)
-    ! zone_taub(zon)   = zone_taub(zon) + col_taub
+      zone_area(zon)     = zone_area(zon) + area(col)
+      zone_temp(zon)     = zone_temp(zon) + temp(col)
+      zone_salt(zon)     = zone_salt(zon) + salt(col)
+      zone_rho(zon)      = zone_rho(zon) + rho(col)
+      zone_height(zon)   = zone_height(zon) + h(col)
+      zone_extc(zon)     = zone_extc(zon) + extcoeff(col)
+      zone_tss(zon)      = zone_tss(zon) + tss(col)
+      zone_par(zon)      = zone_par(zon) + par(col)
+      zone_wind(zon)     = zone_wind(zon) + wnd(col)
+      zone_rain(zon)     = zone_rain(zon) + rain(col)
+      zone_rainloss(zon) = zone_rainloss(zon) + rainloss(col)
+      zone_air_temp(zon) = zone_air_temp(zon) + air_temp(col)
+      zone_bathy(zon)    = zone_bathy(zon) + bathy(col)
+      zone_I_0(zon)      = zone_I_0(zon) + I_0(col)
+!     zone_taub(zon)     = zone_taub(zon) + col_taub
 
-      zone_count(zon)  = zone_count(zon) + 1
+      zone_count(zon) = zone_count(zon) + 1
    ENDDO
 
    zone_temp = zone_temp / zone_count
@@ -198,10 +224,19 @@ SUBROUTINE calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, 
    zone_extc = zone_extc / zone_count
    zone_tss  =  zone_tss / zone_count
    zone_par  =  zone_par / zone_count
-   zone_wind = zone_wind / zone_count
-   zone_rain = zone_rain / zone_count
-   zone_I_0  =  zone_I_0 / zone_count
-   zone_taub = zone_taub / zone_count
+
+   !# non-PAR light fudge
+   zone_nir = (zone_par/0.45) * 0.510
+   zone_uva = (zone_par/0.45) * 0.035
+   zone_uvb = (zone_par/0.45) * 0.005
+
+   zone_wind     =     zone_wind / zone_count
+   zone_rain     =     zone_rain / zone_count
+   zone_rainloss = zone_rainloss / zone_count
+   zone_air_temp = zone_air_temp / zone_count
+   zone_bathy    =    zone_bathy / zone_count
+   zone_I_0      =      zone_I_0 / zone_count
+!  zone_taub     =     zone_taub / zone_count
 END SUBROUTINE calc_zone_areas
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -221,7 +256,7 @@ SUBROUTINE copy_to_zone(nCols, cc, area, active, benth_map)
 !
 !-------------------------------------------------------------------------------
 !BEGIN
-   zone_cc(1:nwq_var,zon) = zero_
+   zone_cc(1:nwq_var,:) = zero_
    DO col=1, nCols
       IF (.NOT. active(col)) CYCLE
 
@@ -301,25 +336,20 @@ SUBROUTINE define_column_zone(column, zon, n_aed2_vars)!, n_vars)
             CASE ( 'layer_ht' )    ; column(av)%cell => zone_height
             CASE ( 'layer_area' )  ; column(av)%cell_sheet => zone_area(zon)
             CASE ( 'rain' )        ; column(av)%cell_sheet => zone_rain(zon)
-       !    CASE ( 'rainloss' )    ; column(av)%cell_sheet => zone_rainloss(zon)
+            CASE ( 'rainloss' )    ; column(av)%cell_sheet => zone_rainloss(zon)
             CASE ( 'material' )    ; column(av)%cell_sheet => zone(zon)
-       !    CASE ( 'bathy' )       ; column(av)%cell_sheet => zone_bathy(zon)
+            CASE ( 'bathy' )       ; column(av)%cell_sheet => zone_bathy(zon)
             CASE ( 'extc_coef' )   ; column(av)%cell => zone_extc
             CASE ( 'tss' )         ; column(av)%cell => zone_tss
             CASE ( 'par' )         ; column(av)%cell => zone_par
-       !    CASE ( 'par' )         ; IF (link_ext_par) THEN
-       !                                column(av)%cell => lpar(top:bot)
-       !                             ELSE
-       !                                column(av)%cell => par(top:bot)
-       !                             ENDIF
-       !    CASE ( 'nir' )         ; column(av)%cell => zone_nir
-       !    CASE ( 'uva' )         ; column(av)%cell => zone_uva
-       !    CASE ( 'uvb' )         ; column(av)%cell => zone_uvb
+            CASE ( 'nir' )         ; column(av)%cell => zone_nir
+            CASE ( 'uva' )         ; column(av)%cell => zone_uva
+            CASE ( 'uvb' )         ; column(av)%cell => zone_uvb
             CASE ( 'sed_zone' )    ; column(av)%cell_sheet => zone(zon)
             CASE ( 'wind_speed' )  ; column(av)%cell_sheet => zone_wind(zon)
             CASE ( 'par_sf' )      ; column(av)%cell_sheet => zone_I_0(zon)
-       !    CASE ( 'taub' )        ; column(av)%cell_sheet => zone_taub
-       !    CASE ( 'air_temp' )    ; column(av)%cell_sheet => zone_air_temp(zon)
+            CASE ( 'taub' )        ; column(av)%cell_sheet => zone_taub
+            CASE ( 'air_temp' )    ; column(av)%cell_sheet => zone_air_temp(zon)
 
        !    CASE ( 'nearest_active' ) ; column(av)%cell_sheet => zone_nearest_active(col);
        !    CASE ( 'nearest_depth' )  ; column(av)%cell_sheet => zone_nearest_depth(col);
@@ -344,8 +374,8 @@ SUBROUTINE define_column_zone(column, zon, n_aed2_vars)!, n_vars)
     !       column(av)%flux_atm => flux_atm(nwq_var+sv)
          ELSE
             v = v + 1
-            column(av)%cell => zone_cc(v, 1:1)
-            column(av)%flux_pel => flux_pelz(v, 1:1)
+            column(av)%cell => zone_cc(v, zon:zon)
+            column(av)%flux_pel => flux_pelz(v, zon:zon)
             column(av)%flux_ben => flux_benz(v, zon)
     !       column(av)%flux_atm => flux_atm(v)
          ENDIF
@@ -373,7 +403,7 @@ SUBROUTINE compute_zone_benthic_fluxes(n_aed2_vars, dt)
 
       CALL aed2_calculate_benthic(column, 1)
       DO v=nwq_var+1,nwq_var+nben_var
-         zone_cc(v, 1) = zone_cc(v, 1) + dt*flux_benz(v, zon);
+         zone_cc(v, zon) = zone_cc(v, zon) + dt*flux_benz(v, zon);
       ENDDO
    ENDDO
 END SUBROUTINE compute_zone_benthic_fluxes
