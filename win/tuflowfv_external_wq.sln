@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "tuflowfv_external_wq", "tuflowfv_external_wq.vfproj", "{DE94B943-D973-4C1E-A427-E3CD39FBA78D}"
 	ProjectSection(ProjectDependencies) = postProject
 		{F521D689-F526-488C-A80A-54FAB6929F85} = {F521D689-F526-488C-A80A-54FAB6929F85}

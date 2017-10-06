@@ -23,12 +23,15 @@
 !#                                                                             #
 !# Created Aug 2013                                                            #
 !# Update Mar 2016: Add new env variables and feedback links                   #
+!# Update Jun 2016: Add riparian exchange functionality                        #
+!# Update Aug 2016: Add links for getting wave stress                          #
+!# Update Oct 2016: Add variable mbility support                               #
 !#                                                                             #
 !###############################################################################
 
 #include "aed2.h"
 
-#define FV_AED_VERS "0.9.24"
+#define FV_AED_VERS "0.9.34"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -62,19 +65,24 @@ MODULE fv_aed2
    !# Array pointing to the lagrangian particle masses and diagnostic properties
    AED_REAL,DIMENSION(:,:),POINTER :: pp, pp_diag
 
-   !# Name of file being used to load initial values for benthic or benthic_diag vars
+   !# Name of files being used to load initial values for benthic
+   !  or benthic_diag vars, and the horizontal routing table for riparian flows
    CHARACTER(len=128) :: init_values_file = ''
    CHARACTER(len=128) :: route_table_file = ''
 
    !# Maps of surface, bottom and wet/dry (active) cells
-   LOGICAL,DIMENSION(:),POINTER :: active
-   !# Previous active state
-!  LOGICAL,DIMENSION(:),ALLOCATABLE :: pactive
    INTEGER,DIMENSION(:),POINTER :: surf_map, benth_map
+   LOGICAL,DIMENSION(:),POINTER :: active
 
-   !# Arrays for work, vertical movement, and cross-boundary fluxes
-   AED_REAL,ALLOCATABLE,DIMENSION(:,:) :: flux
-   AED_REAL,ALLOCATABLE,DIMENSION(:)   :: ws, total
+   !# Maps to nearest cell with water (for riparian exchange)
+   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_active
+   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_depth
+   INTEGER, DIMENSION(:), ALLOCATABLE       :: route_table
+
+   !# Arrays for work, vertical movement (ws), and cross-boundary fluxes
+   AED_REAL,ALLOCATABLE,DIMENSION(:,:) :: flux, ws
+   AED_REAL,ALLOCATABLE,DIMENSION(:)   :: total
+   AED_REAL,ALLOCATABLE,DIMENSION(:)   :: Fsed_setl
    AED_REAL,ALLOCATABLE,DIMENSION(:)   :: min_, max_
 
    !# Arrays for environmental variables (used if they are not supplied externally)
@@ -83,48 +91,43 @@ MODULE fv_aed2
    AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: uva
    AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: uvb
    AED_REAL,DIMENSION(:),POINTER :: lpar
-   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_active
-   AED_REAL,ALLOCATABLE,DIMENSION(:),TARGET :: nearest_depth
-
-   AED_REAL,TARGET :: col_taub  ! a temp var for the taub for column (computed from ustar_bed)
+   AED_REAL,TARGET :: col_taub  ! a temp var for bottom stress (computed from ustar_bed)
 
    !# External variables
    AED_REAL :: dt
+   INTEGER, DIMENSION(:,:),POINTER :: mat
+   AED_REAL,DIMENSION(:,:),POINTER :: rad
    AED_REAL,DIMENSION(:),  POINTER :: temp, salt, rho, nuh, h, z
    AED_REAL,DIMENSION(:),  POINTER :: extcoeff, tss, bio_drag
    AED_REAL,DIMENSION(:),  POINTER :: I_0, wnd, air_temp, rain
    AED_REAL,DIMENSION(:),  POINTER :: area, bathy, shadefrac, rainloss
-   AED_REAL,DIMENSION(:),  POINTER :: Fsed_setl, ustar_bed, wv_uorb, wv_t
-   AED_REAL,DIMENSION(:,:),POINTER :: rad
-   INTEGER, DIMENSION(:,:),POINTER :: mat
-
-   INTEGER, DIMENSION(:), ALLOCATABLE :: route_table
+   AED_REAL,DIMENSION(:),  POINTER :: ustar_bed
+   AED_REAL,DIMENSION(:),  POINTER :: wv_uorb, wv_t
 
    !# maximum single precision real is 2**128 = 3.4e38
    AED_REAL :: glob_min = -1.0e38
    AED_REAL :: glob_max =  1.0e38
 
+   !# Misc variables/options
    AED_REAL :: min_water_depth =  0.0401
    AED_REAL :: wave_factor =  1.0
+   LOGICAL  :: old_zones = .TRUE.
+   LOGICAL  :: do_zone_averaging = .FALSE.
+   LOGICAL  :: request_nearest = .FALSE.
+   LOGICAL  :: reinited = .FALSE.
+   INTEGER  :: ThisStep = 0, n_equil_substep = 1
 
    !# Switches for configuring model operation and active links with the host model
-   LOGICAL :: link_water_clarity, link_water_density,                          &
-              link_bottom_drag, link_surface_drag,                             &
-              link_ext_par, ext_tss_extinction,                                &
-              link_solar_shade, link_rain_loss,                                &
+   LOGICAL :: link_water_clarity, link_water_density, &
+              link_bottom_drag, link_surface_drag, &
+              link_ext_par, ext_tss_extinction, &
+              link_solar_shade, link_rain_loss, &
               do_limiter, no_glob_lim, do_2d_atm_flux, do_particle_bgc, &
-              link_wave_stress
-
-   LOGICAL :: old_zones = .TRUE.
-   LOGICAL :: do_zone_averaging = .FALSE.
-   LOGICAL :: request_nearest = .FALSE.
-   LOGICAL :: reinited = .FALSE.
-
-   INTEGER :: ThisStep = 0, n_equil_substep = 1
-!  INTEGER :: phreat_id = 0, phreat_col = 0, phreat_var = 0
+              link_wave_stress, display_minmax
 
    !# Integers storing number of variables being simulated
    INTEGER :: n_aed2_vars, n_vars, n_vars_ben, n_vars_diag, n_vars_diag_sheet
+
 
 CONTAINS
 !===============================================================================
@@ -133,8 +136,8 @@ CONTAINS
 !###############################################################################
 SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennames,diagnames)
 !-------------------------------------------------------------------------------
-! This routine is called by tuflowfv to define numbers of variables. TuflowFV
-! will allocate the variables after return from this routine.
+! This routine is called by TuflowFV to define numbers and names of variables.
+! TuflowFV will allocate the variables after return from this routine.
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    INTEGER,          INTENT(in)  :: namlst
@@ -145,12 +148,11 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    CHARACTER(len=30),ALLOCATABLE,INTENT(out) :: diagnames(:)
 !
 !LOCALS
-   CHARACTER(len=128) :: aed2_nml_file
-   CHARACTER(len=128) :: tname
-   AED_REAL           :: base_par_extinction, tss_par_extinction
-   INTEGER            :: status
-   INTEGER            :: n_sd, i, j
    TYPE(aed2_variable_t),POINTER :: tvar
+   CHARACTER(len=128)            :: aed2_nml_file
+   CHARACTER(len=128)            :: tname
+   AED_REAL                      :: base_par_extinction, tss_par_extinction
+   INTEGER                       :: status, n_sd, i, j
 
    CHARACTER(len=64) :: models(64)
    NAMELIST /aed2_models/ models
@@ -164,12 +166,14 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
                        link_solar_shade, link_rain_loss, init_values_file,     &
                        do_limiter, glob_min, glob_max, no_glob_lim,            &
                        route_table_file, n_equil_substep, min_water_depth,     &
-                       link_wave_stress, wave_factor
+                       link_wave_stress, wave_factor, display_minmax
 !
 !-------------------------------------------------------------------------------
 !BEGIN
-   print *, "*** Using fv_aed2 version ", TRIM(FV_AED_VERS)
+   print *, " "
+   print *, "    using fv_aed2 version ", TRIM(FV_AED_VERS)
 
+   ! Set default AED2 link options
    aed2_nml_file = 'aed2.nml'
    solution_method = 1
    link_bottom_drag = .false.
@@ -188,42 +192,47 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    do_particle_bgc = .false.
    min_water_depth = 0.0401
    link_wave_stress = .false.
+   display_minmax = .false.
 
+   ! Process input file (aed2.nml) to get run options
+   print *, "    initialise aed2_core "
    IF ( aed2_init_core(dname) /= 0 ) STOP "Initialisation of aed2_core failed"
+   CALL aed2_print_version
    tname = TRIM(dname)//'aed2.nml'
-   print *,"Reading aed2_models config from ",TRIM(tname)
+   print *,"    reading fv_aed2 config from ",TRIM(tname)
    OPEN(namlst,file=tname,action='read',status='old',iostat=status)
    IF ( status /= 0 ) CALL STOPIT("Cannot open file " // TRIM(tname))
    READ(namlst,nml=aed2_bio,iostat=status)
    IF ( status /= 0 ) STOP "Cannot read namelist entry aed2_bio"
 
+   Kw = base_par_extinction
+   Ksed = tss_par_extinction
+   IF ( do_zone_averaging ) old_zones = .FALSE.
+   print *,'    link options configured between TFV & AED2 - '
+   print *,'        link_ext_par       :  ',link_ext_par
+   print *,'        link_water_clarity :  ',link_water_clarity
+   print *,'        link_surface_drag  :  ',link_surface_drag,' (not active)'
+   print *,'        link_bottom_drag   :  ',link_bottom_drag
+   print *,'        link_wave_stress   :  ',link_wave_stress
+   print *,'        link_solar_shade   :  ',link_solar_shade
+   print *,'        link_rain_loss     :  ',link_rain_loss
+   print *,'        link_particle_bgc  :  ',do_particle_bgc,' (not active)'
+   print *,'        link_water_density :  ',link_water_density,' (not active)'
 
+   ! Process input file (aed2.nml) to get selected models
+   print *,"    reading aed2_models config from ",TRIM(tname)
    models = ''
    READ(namlst, nml=aed2_models, iostat=status)
    IF ( status /= 0 ) STOP "Cannot read namelist entry aed2_models"
 
-   Kw = base_par_extinction
-   Ksed = tss_par_extinction
-
-   IF ( do_zone_averaging ) old_zones = .FALSE.
-
+   ! Process each model define/setup block
    DO i=1,size(models)
       IF (models(i)=='') EXIT
       CALL aed2_define_model(models(i), namlst)
    ENDDO
 
+   ! Set number of configured variables
    n_aed2_vars = aed2_core_status(nwq_var, nben_var, ndiag_var, n_sd)
-
-#if DEBUG
-   DO i=1,n_aed2_vars
-      IF ( aed2_get_var(i, tvar) ) THEN
-         print *,"AED2 var ", i, tvar%sheet, tvar%diag, tvar%extern, TRIM(tvar%name)
-      ELSE
-         print *,"AED2 var ", i, " is empty"
-      ENDIF
-   ENDDO
-#endif
-
    ndiag_var = ndiag_var + n_sd
    n_vars = nwq_var
    n_vars_ben = nben_var
@@ -231,21 +240,32 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    n_vars_diag_sheet = n_sd
 
 #if DEBUG
-   print*,'AED2 init_aed2_models : n_aed2_vars = ',n_aed2_vars,' nwq_var = ',nwq_var,' nben_var ',nben_var
+      DO i=1,n_aed2_vars
+         IF ( aed2_get_var(i, tvar) ) THEN
+            print *,"AED2 var ", i, tvar%sheet, tvar%diag, tvar%extern, TRIM(tvar%name)
+         ELSE
+            print *,"AED2 var ", i, " is empty"
+         ENDIF
+      ENDDO
+#endif
+#if DEBUG
+   print*,'    init_aed2_models : n_aed2_vars = ',n_aed2_vars,&
+          ' nwq_var = ',nwq_var,' nben_var ',nben_var
 #endif
 
    CALL check_data
 
    !# names = grab the names from info
    ALLOCATE(names(1:nwq_var),stat=status)
-   IF (status /= 0) STOP 'allocate_memory(): Error allocating (names)'
+   IF (status /= 0) STOP 'allocate_memory(): ERROR allocating (names)'
    ALLOCATE(bennames(1:nben_var),stat=status)
-   IF (status /= 0) STOP 'allocate_memory(): Error allocating (bennames)'
+   IF (status /= 0) STOP 'allocate_memory(): ERROR allocating (bennames)'
    IF ( .NOT. ALLOCATED(diagnames) ) ALLOCATE(diagnames(ndiag_var))
-   IF (status /= 0) STOP 'allocate_memory(): Error allocating (diagnames)'
+   IF (status /= 0) STOP 'allocate_memory(): ERROR allocating (diagnames)'
 
    ALLOCATE(min_(1:nwq_var+nben_var)) ; ALLOCATE(max_(1:nwq_var+nben_var))
 
+   print *,"    configured variables - "
    j = 0
    DO i=1,n_aed2_vars
       IF ( aed2_get_var(i, tvar) ) THEN
@@ -254,7 +274,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
             names(j) = TRIM(tvar%name)
             min_(j) = tvar%minimum
             max_(j) = tvar%maximum
-            print *,"AED2 var name(",j,") : ", TRIM(names(j))
+            print *,"     S(",j,") AED2 pelagic(3D) variable: ", TRIM(names(j))
          ENDIF
       ENDIF
    ENDDO
@@ -267,7 +287,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
             bennames(j) = TRIM(tvar%name)
             min_(nwq_var+j) = tvar%minimum
             max_(nwq_var+j) = tvar%maximum
-            print *,"AED2 var_ben name(",j,") : ", TRIM(bennames(j))
+            print *,"     B(",j,") AED2 benthic(2D) variable: ", TRIM(bennames(j))
          ENDIF
       ENDIF
    ENDDO
@@ -278,7 +298,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
          IF ( tvar%diag ) THEN
             j = j + 1
             diagnames(j) = TRIM(tvar%name)
-            print *,"AED2 diag name(",j,") : ", trim(diagnames(j))
+            print *,"     D(",j,") AED2 diagnostic variable:  ", TRIM(diagnames(j))
          ENDIF
       ENDIF
    ENDDO
@@ -291,13 +311,14 @@ END SUBROUTINE init_aed2_models
 !###############################################################################
 SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
 !-------------------------------------------------------------------------------
+! Points the AED2 main variable arrays to those provided by the host model.
 ! At this point TuflowFV should have allocated the variable space.
 !-------------------------------------------------------------------------------
 !ARGUMENTS
-   INTEGER,INTENT(in) :: nCells
+   INTEGER,INTENT(in)                         :: nCells
    AED_REAL,POINTER,DIMENSION(:,:),INTENT(in) :: cc_, cc_diag_
-   INTEGER,INTENT(inout)                   :: nwq, nwqben
-   INTEGER,POINTER,DIMENSION(:),INTENT(in) :: sm, bm
+   INTEGER,INTENT(inout)                      :: nwq, nwqben
+   INTEGER,POINTER,DIMENSION(:),INTENT(in)    :: sm, bm
 !
 !LOCALS
    INTEGER :: rc, av, v, sv, d, sd
@@ -308,7 +329,7 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    nwq = n_vars
    nwqben = n_vars_ben
 
-   print *,'init_var_aed2_models : nwq = ',nwq,' nwqben = ',nwqben
+   print *,'    init_var_aed2_models : nwq = ',nwq,' nwqben = ',nwqben
 
    cc => cc_
    cc_diag => cc_diag_
@@ -316,16 +337,16 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    benth_map => bm
 
    ! Allocate state variable array
-   IF ( .NOT. ASSOCIATED(cc) ) STOP ' Error : no association for (cc)'
+   IF ( .NOT. ASSOCIATED(cc) ) STOP ' ERROR : no association for (cc)'
    cc = 0.
 
-   IF (.not. ASSOCIATED(cc_diag) ) STOP ' Error : no association for (cc_diag)'
+   IF (.not. ASSOCIATED(cc_diag) ) STOP ' ERROR : no association for (cc_diag)'
    cc_diag = 0.
 
-   ! Allocate array with vertical movement rates (m/s, positive for upwards),
-   ! and set these to the values provided by the model.
-   ALLOCATE(ws(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
+   ! Allocate array with vertical movement rates (m/s, positive for upwards)
+   ! These will be set the values provided by the modules
+   ALLOCATE(ws(1:nCells,1:n_aed2_vars),stat=rc)
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (ws)'
    ws = 0.
 
    !!# place holder for lagranigan particles
@@ -336,27 +357,27 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    ALLOCATE(par(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (par)'
    par = 0.
    ALLOCATE(nir(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (nir)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (nir)'
    nir = 0.
    ALLOCATE(uva(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (uva)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (uva)'
    uva = 0.
    ALLOCATE(uvb(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (uvb)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (uvb)'
    uvb = 0.
 
    !# Allocate array for sedimentation fluxes and initialize these to zero (no flux).
    ALLOCATE(Fsed_setl(1:nCells),stat=rc)
-   IF (rc /= 0) STOP 'allocate_memory(): Error allocating (Fsed_setl)'
+   IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (Fsed_setl)'
    Fsed_setl = 0.
 
    !# Now set initial values
    v = 0 ; sv = 0;
    DO av=1,n_aed2_vars
-      IF ( .NOT.  aed2_get_var(av, tv) ) STOP "Error getting variable info"
+      IF ( .NOT.  aed2_get_var(av, tv) ) STOP "ERROR getting variable info"
       IF ( .NOT. ( tv%extern .OR. tv%diag) ) THEN  !# neither global nor diagnostic variable
          IF ( tv%sheet ) THEN
             sv = sv + 1
@@ -371,12 +392,12 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    IF ( init_values_file /= '' ) CALL set_initial_from_file
    IF ( route_table_file /= '' ) CALL load_route_table(ubound(bm, 1))
 
-   ALLOCATE(flux(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux)'
+   ALLOCATE(flux(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux)'
 #if !_NO_ODE_
-   ALLOCATE(flux2(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux2)'
-   ALLOCATE(flux3(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux3)'
-   ALLOCATE(flux4(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (flux4)'
-   ALLOCATE(cc1(n_vars, nCells),stat=rc)   ; IF (rc /= 0) STOP 'allocate_memory(): Error allocating (cc1)'
+   ALLOCATE(flux2(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux2)'
+   ALLOCATE(flux3(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux3)'
+   ALLOCATE(flux4(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux4)'
+   ALLOCATE(cc1(n_vars, nCells),stat=rc)   ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (cc1)'
 #endif
 !
 !-------------------------------------------------------------------------------
@@ -437,7 +458,9 @@ CONTAINS
    !----------------------------------------------------------------------------
       unit = aed_csv_read_header(init_values_file, csvnames, nccols)
       IF (unit <= 0) RETURN !# No file found
-      print *,'benthic vars initialised from file : ', TRIM(init_values_file)
+      print *,'    spatial AED2 var initialisation from file: '
+      print *,'        ', TRIM(init_values_file)
+
       DO ccol=1,nccols
          IF ( csvnames(ccol) == "ID" ) THEN
             idx_col = ccol
@@ -454,7 +477,7 @@ CONTAINS
       IF ( idx_col > 0 ) THEN
          v = 0 ; sv = 0; d = 0; sd = 0
          DO av=1,n_aed2_vars
-            IF ( .NOT. aed2_get_var(av, tv) ) STOP "Error getting variable info"
+            IF ( .NOT. aed2_get_var(av, tv) ) STOP "ERROR getting variable info"
             IF ( .NOT. ( tv%extern ) ) THEN  !#  dont do environment vars
                IF (tv%diag) THEN
                   d = d + 1
@@ -470,7 +493,8 @@ CONTAINS
                      IF (tv%diag) THEN
                         numd = numd + 1
                         dmap(numd) = ccol
-! IF ( same_str_icase(tv%name, "LND_phreatic") ) THEN ; phreat_id = av ; phreat_col = ccol ; phreat_var = d ; ENDIF
+                      ! IF ( same_str_icase(tv%name, "LND_phreatic") ) THEN
+                      ! phreat_id = av ; phreat_col = ccol ; phreat_var = d ; ENDIF
                         dvar(numd) = d
                         dsheet(numd) = tv%sheet
                      ELSE
@@ -481,7 +505,7 @@ CONTAINS
                         ELSE
                            vars(numv) = v
                         ENDIF
-                        vsheet(numd) = tv%sheet
+                        vsheet(numv) = tv%sheet
                      ENDIF
                   ENDIF
                ENDDO
@@ -500,7 +524,8 @@ CONTAINS
             ENDDO
             DO v=1,numd
                IF ( dmap(v) == 0 ) CYCLE
-! IF (dmap(v) == phreat_col ) print*, " XXX setting phreat_col ", phreat_var
+               ! IF (dmap(v) == phreat_col ) &
+               ! print*, " XXX setting phreat_col ", phreat_var
                If ( vsheet(v) ) THEN
                   cc_diag(dvar(v), bm(t)) = extract_double(values(dmap(v)))
                ELSE
@@ -540,7 +565,8 @@ CONTAINS
    !----------------------------------------------------------------------------
       unit = aed_csv_read_header(route_table_file, csvnames, nccols)
       IF (unit <= 0) RETURN !# No file found
-      print *,'routing table initialised from file : ', TRIM(route_table_file)
+      print *,'    riparian cell routing set from file: '
+      print *,'        ', TRIM(route_table_file)
 !# The format of the file should be me, "lowest ajoining" - ie always 2 colums
 !# and always in the order - and we dont really care about the header, but being
 !# csv it should have it so we read but ignore it.
@@ -566,7 +592,7 @@ CONTAINS
       DO WHILE ( aed_csv_read_row(unit, values) )
          crow = crow + 1
          IF ( crow > nrows ) THEN
-            print*, "routing table has more rows than expected - extras ignored"
+            print*, "        NOTE: routing table has more rows than expected - extras ignored"
          ENDIF
          t = extract_integer(values(idx_col))
          route_table(crow) = extract_integer(values(2))
@@ -574,7 +600,8 @@ CONTAINS
          !MH PUT A CHECK HERE TO MAKE SURE NO CIRCULAR REFERENCE
       ENDDO
 
-      IF ( crow < nrows ) print*, "routing table has less rows than expected?",nrows
+      IF ( crow < nrows ) &
+      print*, "        NOTE: routing table has less rows than expected? ",crow,"/",nrows
 
       meh = aed_csv_close(unit)
       !# don't care if close fails
@@ -589,7 +616,7 @@ END SUBROUTINE init_var_aed2_models
 
 
 !###############################################################################
-SUBROUTINE set_env_aed2_models(dt_,              &   !
+SUBROUTINE set_env_aed2_models(dt_,              &
                             ! 3D env variables
                                temp_,            &
                                salt_,            &
@@ -619,19 +646,20 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
                                rainloss_         &
                                )
 !-------------------------------------------------------------------------------
-! Provide information about tuflowfv data not declared by aed2_bio
+! Provide environmental information from TuflowFV and set feedback arrays
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    DOUBLETYPE, INTENT(in) :: dt_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: temp_, salt_, rho_, h_,    &
                                                     area_, tss_, extcoeff_, z_
    AED_REAL, INTENT(in), DIMENSION(:,:), POINTER :: rad_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: I_0_, wnd_, ustar_bed_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: I_0_, wnd_, ustar_bed_, ustar_surf_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: wv_uorb_, wv_t_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: rain_, bathy_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: biodrag_, ustar_surf_, solarshade_, rainloss_
-   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: air_temp_, wv_uorb_, wv_t_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: air_temp_
    INTEGER,  INTENT(in), DIMENSION(:,:), POINTER :: mat_id_
    LOGICAL,  INTENT(in), DIMENSION(:),   POINTER :: active_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: biodrag_, solarshade_, rainloss_
 !
 !LOCALS
    INTEGER :: i, j
@@ -640,8 +668,10 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
 !
 !-------------------------------------------------------------------------------
 !BEGIN
+   print *,'    set_env_aed2_models : linking to host environment vars '
+
    !# Provide pointers to arrays with environmental variables to AED2.
-   print *,'set_env_aed2_models  '
+   dt = dt_
 
    !# 2D (sheet) variables being pointed to
    area => area_
@@ -661,8 +691,8 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
    END IF
 
    !# 3D variables being pointed to
-   h    => h_            !# layer heights [1d array] needed for advection, diffusion
-   z    => z_            !# depth [1d array], used to calculate local pressure
+   h => h_               !# layer heights [1d array] needed for advection, diffusion
+   z => z_               !# depth [1d array], used to calculate local pressure
    extcoeff => extcoeff_ !# biogeochemical light attenuation coefficients [1d array],
                          !# output of biogeochemistry, input for physics
    salt => salt_
@@ -671,9 +701,11 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
    rho => rho_
    tss => tss_
    active => active_
+
+   IF (link_ext_par) lpar => rad_(1,:)
+
 !  ALLOCATE(pactive(size(active)))
 !  pactive = active
-
 #if DEBUG
 !if ( .not. associated(area) ) print*, " No association for area"
 !if ( .not. associated(I_0) ) print*, " No association for I_0"
@@ -695,13 +727,6 @@ SUBROUTINE set_env_aed2_models(dt_,              &   !
 !if ( .not. associated(tss) ) print*, " No association for tss"
 !if ( .not. associated(active) ) print*, " No association for active"
 #endif
-
-   dt = dt_
-
-   IF (link_ext_par) THEN
-      lpar => rad_(1,:)
-   ENDIF
-
 ! CALL CheckPhreatic
 
    IF (old_zones) THEN
@@ -758,7 +783,7 @@ SUBROUTINE check_data
    err_count = 0
 
    DO av=1,n_aed2_vars
-      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "Error getting variable info"
+      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "ERROR getting variable info"
 
       IF ( tvar%extern ) THEN !# global variable
          ev = ev + 1
@@ -811,7 +836,7 @@ SUBROUTINE check_data
    if ( n_vars_diag < sd + d ) print *,"More diag vars than expected"
    if ( n_vars_diag_sheet < sd ) print *,"More sheet diag vars than expected"
 
-   IF ( err_count > 0 ) CALL STOPIT("*** Errors in configuration")
+   IF ( err_count > 0 ) CALL STOPIT("*** ERRORs in configuration")
 END SUBROUTINE check_data
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -843,7 +868,7 @@ SUBROUTINE define_column(column, col, cc, cc_diag, flux_pel, flux_atm, flux_ben,
    v = 0 ; d = 0; sv = 0; sd = 0 ; ev = 0
    DO av=1,n_aed2_vars
 
-      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "Error getting variable info"
+      IF ( .NOT.  aed2_get_var(av, tvar) ) STOP "ERROR getting variable info"
 
       IF ( tvar%extern ) THEN !# global variable
          ev = ev + 1
@@ -1011,7 +1036,7 @@ END SUBROUTINE check_states
 
 
 !###############################################################################
-SUBROUTINE FillNearest(nCols)
+SUBROUTINE fill_nearest(nCols)
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    INTEGER, INTENT(in) :: nCols
@@ -1033,13 +1058,14 @@ SUBROUTINE FillNearest(nCols)
                k = route_table(k)
             ENDDO
             nearest_active(col) = k
-            nearest_depth(col) = h(benth_map(k)) + bathy(k)           ! this needs fixing to sum over top:bot, as h is layer thicknesses, not references to datum
+            nearest_depth(col) = h(benth_map(k)) + bathy(k)
+            ! this needs fixing to sum over top:bot, as h is layer thicknesses, not references to datum
          ENDIF
       ENDDO
    ELSE
       nearest_active = 0.
    ENDIF
-END SUBROUTINE FillNearest
+END SUBROUTINE fill_nearest
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -1054,20 +1080,23 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    AED_REAL :: tr
 
    AED_REAL :: flux_ben(n_vars+n_vars_ben), flux_atm(n_vars+n_vars_ben),       &
-                                            flux_rip(n_vars+n_vars_ben)
+               flux_rip(n_vars+n_vars_ben)
    TYPE (aed2_column_t) :: column(n_aed2_vars)
 
-   INTEGER  :: i, j, col, lev, top, bot, v, na
+   INTEGER  :: i, j, col, lev, top, bot, v, na, d
    AED_REAL :: rain_loss
    LOGICAL  :: aed_active_col
+   AED_REAL,DIMENSION(:),POINTER :: tpar
 !
 !-------------------------------------------------------------------------------
 !BEGIN
 ! print *," START do_aed2_models"
 
+   !#--------------------------------------------------------------------
+   !# START-UP JOBS
    rainloss = zero_
 
-   IF ( request_nearest ) CALL FillNearest(nCols)
+   IF ( request_nearest ) CALL fill_nearest(nCols)
 
    IF ( .not. reinited ) CALL re_initialize()
 
@@ -1075,43 +1104,53 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
    IF ( do_zone_averaging ) THEN
       IF (link_ext_par) THEN
-         CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, par, tss, active, rain)
+         tpar => lpar
       ELSE
-         CALL calc_zone_areas(nCols, temp, salt, h, area, wnd, rho, extcoeff, I_0, lpar, tss, active, rain)
+         tpar => par
       ENDIF
+      CALL calc_zone_areas(nCols, active, temp, salt, h, area, wnd, rho,       &
+                 extcoeff, I_0, tpar, tss, rain, rainloss, air_temp, bathy, col_taub)
    ENDIF
-
 
 !!$OMP DO
    !#--------------------------------------------------------------------
    !# LOOP THROUGH COLUMNS DOING JOBS PRIOR TO THE KINETICS BEING SOLVED
    DO col=1, nCols
+      ! move to next column if dry
       IF (.NOT. active(col)) CYCLE
 
+      ! identify cell indicies within the domain
       top = surf_map(col)
       bot = benth_map(col)
 
+      ! set column data
       CALL define_column(column, col, cc, cc_diag, flux, flux_atm, flux_ben, flux_rip)
 
-      !# See if there has been a change in active(wet/dry) state
-!     IF (active(col) .NE. pactive(col)) THEN
-!        IF (active(col)) THEN
-!        ELSE
-!           CYCLE
-!        ENDIF
-!     ENDIF
-
-      !# Firstly run through ALL vars and select state vars
+      ! compute vertical settling/mobility
       v = 0
       DO i=1,n_aed2_vars
          IF ( aed2_get_var(i, tv) ) THEN
             IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) ) THEN
                v = v + 1
-               !# only for state_vars that are not sheet
+               ! only for state_vars that are not sheet
                IF ( .NOT. isnan(tv%mobility) ) THEN
-                  ws(top:bot) = tv%mobility
-                  CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot), Fsed_setl(col), column(i)%cell)
+                  ! default to ws that was set during initialisation
+                  ws(top:bot,i) = tv%mobility
+               ELSE
+                  ! zero nan values
+                  ws(top:bot,i) = zero_
                ENDIF
+            ENDIF
+         ENDIF
+      ENDDO
+      DO lev = top, bot
+        ! update ws for modules that use the mobility method
+        CALL aed2_mobility(column, lev-top+1, ws(lev,:))
+      ENDDO
+      DO i=1,n_aed2_vars
+         IF ( aed2_get_var(i, tv) ) THEN
+            IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) .AND. SUM(ABS(ws(top:bot,i)))>zero_ ) THEN
+               CALL Settling(bot-top+1, dt, h(top:bot), ws(top:bot,i), Fsed_setl(col), column(i)%cell)
             ENDIF
          ENDIF
       ENDDO
@@ -1137,18 +1176,17 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    !#--------------------------------------------------------------------
    !# THIS IS THE MAIN WQ SOLUTION LOOP
    DO col=1, nCols
-      !IF(col==14575) &
-      !print *,'Column: ',col,active(col),h(benth_map(col))
-
       !# find top and bottom cell indicies based on maps provided by the host
       top = surf_map(col)
       bot = benth_map(col)
 
       !# compute bottom shear stress for this column based on ustar from host
-      !col_taub = rho(bot)*(ustar_bed(col)*ustar_bed(col))
-      CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col),wv_uorb(col),wv_t(col))
-
-
+      col_taub = rho(bot)*(ustar_bed(col)*ustar_bed(col))
+      IF ( link_wave_stress .AND. ASSOCIATED(wv_uorb) .AND. ASSOCIATED(wv_t) ) THEN
+         CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col),wv_uorb(col),wv_t(col))
+      ELSE
+         CALL Stress(h(bot),rho(bot),col_taub,ustar_bed(col))
+      ENDIF
 
       !# set column data structure from global arrays
       CALL define_column(column, col, cc, cc_diag, flux, flux_atm, flux_ben, flux_rip)
@@ -1162,6 +1200,8 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
       !# do riparian interfaces for this column and update fluxes
       flux_rip = zero_
+      shadefrac(col) = zero_
+      rainloss(col) = zero_
       aed_active_col = active(col)
       IF( h(benth_map(col))<min_water_depth ) aed_active_col = .false.  ! MH TUFLOWFV 4cm dry cells
       IF ( .NOT.  Riparian(column, aed_active_col, shadefrac(col), rainloss(col)) ) THEN
@@ -1173,15 +1213,8 @@ SUBROUTINE do_aed2_models(nCells, nCols)
                               * MIN((area(col)/area(na)),1e2)/h(benth_map(na))
             ENDIF
          ENDIF
-      !IF(col==14575) THEN
-      !print *,'cc_: ',cc(:,benth_map(col))
-      !print *,'cc_diag: ',cc_diag(:,benth_map(col))
-      !PAUSE
-      !ENDIF
          CYCLE
       ENDIF
-
-
 
       !# do non-kinetic updates to BGC variables (eq equilibration)
       IF ( ThisStep >= n_equil_substep ) CALL Update(column, bot-top+1)
@@ -1209,6 +1242,12 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 #endif
          ENDDO ! vars
       ENDDO  ! levels
+
+      !# benthic state variables
+      DO i = n_vars+1, n_vars+n_vars_ben
+        cc(i,bot)=cc(i,bot)+dt*flux_ben(i)
+      ENDDO
+
       !# add riparian flux
       IF ( do_zone_averaging ) THEN ! Untested
          DO i = n_vars+1, n_vars+n_vars_ben
@@ -1224,14 +1263,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
          ENDDO ! ben vars
       ENDIF
 #endif
-
-  !   !# do non-kinetic updates to BGC variables (eq equilibration)
-  !   CALL Update(column, bot-top+1)
- !    IF(col==14575) THEN
- !    print *,'cc_: ',cc(:,14575)
- !     print *,'cc_diag: ',cc_diag(:,14575)
- !     PAUSE
- !    ENDIF
 
 
       !# now the bgc updates are complete, update links to host model
@@ -1250,11 +1281,26 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 !!$OMP END DO
 
    IF ( do_zone_averaging ) &
-      CALL copy_to_zone(nCols, cc, area, active, benth_map)
+      CALL copy_from_zone(nCols, cc, area, active, benth_map)
 
    IF ( ThisStep >= n_equil_substep ) ThisStep = 0
 
-! print*,"DONE do_aed2_models"
+   IF ( display_minmax ) THEN
+      v = 0; d = 0
+      DO i=1,n_aed2_vars
+         IF ( aed2_get_var(i, tv) ) THEN
+            IF ( .NOT. (tv%diag .OR. tv%extern) ) THEN
+               v = v + 1
+               WRITE(*,'(1X,"VarLims: ",I0,1X,"<=> ",f15.8,f15.8," : ",A)')v,MINVAL(cc(v,:)),MAXVAL(cc(v,:)),TRIM(tv%name)
+               !print *,'VarLims',v,TRIM(tv%name),MINVAL(cc(v,:)),MAXVAL(cc(v,:))
+            ELSE IF ( tv%diag .AND. .NOT. no_glob_lim ) THEN
+               d = d + 1
+               WRITE(*,'(1X,"DiagLim: ",I0,1X,"<=> ",f15.8,f15.8," : ",A)')d,MINVAL(cc_diag(d,:)),MAXVAL(cc_diag(d,:)),TRIM(tv%name)
+               !print *,'DiagLim',d,TRIM(tv%name),MINVAL(cc_diag(d,:)),MAXVAL(cc_diag(d,:))
+            ENDIF
+         ENDIF
+      ENDDO
+    ENDIF
 
 CONTAINS
 
@@ -1351,18 +1397,18 @@ END SUBROUTINE Light
 
 
 !###############################################################################
-SUBROUTINE Settling(N,dt,h,ww,Fsed,Y)
+SUBROUTINE Settling(N,dt,h,wvel,Fsed,Y)
 !-------------------------------------------------------------------------------
 !
 ! Update settling of AED2 state variables in a given column
 !
 !-------------------------------------------------------------------------------
 !ARGUMENTS
-   INTEGER,INTENT(in)     :: N      !# number of vertical layers
-   AED_REAL,INTENT(in)    :: dt     !# time step (s)
-   AED_REAL,INTENT(in)    :: h(:)   !# layer thickness (m)
-   AED_REAL,INTENT(in)    :: ww(:)  !# vertical advection speed
-   AED_REAL,INTENT(inout) :: Fsed   !# value of sediment flux due to settling
+   INTEGER,INTENT(in)     :: N       !# number of vertical layers
+   AED_REAL,INTENT(in)    :: dt      !# time step (s)
+   AED_REAL,INTENT(in)    :: h(:)    !# layer thickness (m)
+   AED_REAL,INTENT(in)    :: wvel(:) !# vertical advection speed
+   AED_REAL,INTENT(inout) :: Fsed    !# value of sediment input due to settling
    AED_REAL,INTENT(inout) :: Y(:)
 !
 !CONSTANTS
@@ -1382,16 +1428,16 @@ SUBROUTINE Settling(N,dt,h,ww,Fsed,Y)
    cmax = 0. !# initialize maximum Courant number
 
    !# compute maximum Courant number
-   !# calculated as number of layers that the particles will travel based on settling or
-   !# buoyancy velocity
-   !# this number is then used to split the vertical movement calculations to limit
-   !# movement across a single layer
+   !      calculated as number of layers that the particles will travel based
+   !      on settling or buoyancy velocity.
+   !      This number is then used to split the vertical movement
+   !      calculations to limit movement across a single layer
    DO k=1,N-1
       !# sinking particles
-      c=abs(ww(k+1))*dt/(0.5*(h(k+1)+h(k)))
+      c=abs(wvel(k+1))*dt/(0.5*(h(k+1)+h(k)))
       IF (c > cmax) cmax=c
       !# rising particles
-      c=abs(ww(k))*dt/(0.5*(h(k+1)+h(k)))
+      c=abs(wvel(k))*dt/(0.5*(h(k+1)+h(k)))
       IF (c > cmax) cmax=c
    ENDDO
 
@@ -1399,28 +1445,28 @@ SUBROUTINE Settling(N,dt,h,ww,Fsed,Y)
    step_dt = dt / float(it);
 
    !# splitting loop
-   DO i=1, it
+   DO i = 1,it
       !# vertical loop
       DO k=1,N-1
-         !# compute the slope ration
-         IF (ww(k) > 0.) THEN !# Particle is rising
-            Yc=Y(k  )     !# central value
+         !# compute the slope ratio
+         IF (wvel(k) > 0.) THEN !# Particle is rising
+            Yc=Y(k)       !# central value
          ELSE !# negative speed Particle is sinking
             Yc=Y(k+1)     !# central value
          ENDIF
 
          !# compute the limited flux
-         cu(k)=ww(k) * Yc
+         cu(k)=wvel(k) * Yc
       ENDDO
 
       !# do the upper boundary conditions
-      cu(N) = zero_       !# flux into the domain from atmosphere
+      cu(N) = zero_       !# limit flux into the domain from atmosphere
 
       !# do the lower boundary conditions
-      IF (ww(1) > 0.) THEN !# Particle is rising
+      IF (wvel(1) > 0.) THEN !# Particle is rising
          cu(0) = 0.  !flux from benthos is zero
       ELSE  !# Particle is settling
-         cu(0) = ww(1)*Y(1)
+         cu(0) = wvel(1)*Y(1)
          Fsed = cu(0) * step_dt !# flux settled into the sediments per sub time step
       ENDIF
       !# do the vertical advection step including positive migration
@@ -1438,8 +1484,8 @@ END SUBROUTINE Settling
 LOGICAL FUNCTION Riparian(column, actv, shade_frac, rain_loss)
 !-------------------------------------------------------------------------------
 !
-! Do riparian functionality, including operations in dry and fringing cells
-! Populate feedback arrays to the hoist model associated with riparian effects
+! Do riparian functionality, including operations in dry and fringing cells &
+! populate feedback arrays to the host model associated with riparian effects
 !
 !-------------------------------------------------------------------------------
 !ARGUMENTS
@@ -1519,7 +1565,7 @@ SUBROUTINE Particles(column, count, h_)
 !BEGIN
    zz = zero_
 
-  ! CALL aed2_particle_bgc(column,1,ppid ...)
+ ! CALL aed2_particle_bgc(column,1,ppid ...)
    IF (count <= 1) RETURN
 
    DO i = 2, count
@@ -1630,14 +1676,15 @@ SUBROUTINE Stress(h,rho,taub,ustar,uorb,wvperiod)
 !
 !-------------------------------------------------------------------------------
 !ARGUMENTS
-   AED_REAL, INTENT(in) :: h,rho,ustar,uorb,wvperiod
+   AED_REAL, INTENT(in) :: h,rho,ustar
+   AED_REAL, INTENT(in),OPTIONAL :: uorb,wvperiod
    AED_REAL, INTENT(inout) :: taub
 !
 !LOCAL VARIABLES:
    AED_REAL,PARAMETER :: pi = 4.0*ATAN(1.0)
-   AED_REAL,PARAMETER :: kappa = 0.41
    AED_REAL,PARAMETER :: nuw = 1.05e-6
    AED_REAL,PARAMETER :: ksw = 0.001
+   AED_REAL,PARAMETER :: kappa = 0.41
    AED_REAL :: Aw,Rew,fwr,fws,fw,tauw
 !
 !-------------------------------------------------------------------------------
@@ -1647,23 +1694,26 @@ SUBROUTINE Stress(h,rho,taub,ustar,uorb,wvperiod)
    ! Current shear stress
    taub = rho*(ustar**2)
 
-   IF(.NOT. link_wave_stress) RETURN
+   IF( .NOT.PRESENT(uorb) .OR. .NOT.PRESENT(wvperiod) ) RETURN
 
    ! Shear stress due to wave-induced orbital velocity
    IF (h<0.05 .OR. uorb<0.001 .OR. wvperiod<0.01) THEN
    ELSE
       Aw = uorb*wvperiod/(2.*pi)
       Rew = uorb*Aw/nuw
-      fws = 0.035*Rew**(-0.16) ! SMOOTH FRICTION FACTOR
-      fwr = EXP(5.21*(ksw/Aw)**0.194-5.98) ! ROUGH-TURBULENT FRICTION FACTOR
+      ! Smooth friction factor
+      fws = 0.035*Rew**(-0.16)
+      ! Turbulent friction factor
+      fwr = EXP(5.21*(ksw/Aw)**0.194-5.98)
       fw = MAX(fws,fwr)
-      tauw = (0.5*rho*fw*uorb**2)  *wave_factor
+      ! Calculate wave stress (wave_factor allows for user scaling)
+      tauw = (0.5*rho*fw*uorb**2)*wave_factor
 
       ! Total current + wave stress
-      taub = taub*(1.+1.2*(tauw/(taub+tauw+1e-10))**3.2) ! MEAN Bed shear
-      taub = SQRT(taub**2+0.5*tauw**2) !RMS Bed shear
-
-     ! print *,'tau',taub,tauw
+      !-- a) mean bed shear
+      taub = taub*( 1.+1.2*(tauw/(taub+tauw+1e-10))**3.2 )
+      !-- b) RMS bed shear
+      taub = SQRT( taub**2 + 0.5*tauw**2 )
    END IF
 END SUBROUTINE Stress
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
