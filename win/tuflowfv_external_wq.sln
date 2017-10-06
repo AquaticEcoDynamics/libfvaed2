@@ -15,8 +15,6 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libfvaed", "libfvaed.vfproj
 EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libaed2", "..\..\libaed2\win\libaed2.vfproj", "{71B1A1B7-387A-4D58-8607-F9B24B896995}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2AE38514-7962-4B93-988F-5C53209E4384}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
