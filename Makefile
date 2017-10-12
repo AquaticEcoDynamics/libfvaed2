@@ -6,7 +6,7 @@
 objdir=obj
 srcdir=src
 libdir=lib
-VERS=1.0.2
+VERS=1.2.1
 
 ifeq ($(AED2DIR),)
   AED2DIR=../libaed2
