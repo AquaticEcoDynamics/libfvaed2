@@ -10,7 +10,7 @@ ifndef EXTERNAL_LIBS
   EXTERNAL_LIBS = static
 endif
 
-ifeq ($(COMPILATION_MODE),debug)
+ifeq ($(DEBUG),true)
   FFLAGS=-g -traceback -fpp -check -fPIC
   buildt=_debug
 else
