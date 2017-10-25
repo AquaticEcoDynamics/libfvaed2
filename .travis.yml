@@ -23,7 +23,8 @@
     "export GOTMDIR=${CURDIR}/../gotm-git",
     "export AED2DIR=${CURDIR}/../libaed2",
     "export FV_CONFIGURED=true",
-    "./build_tfv_aed.sh"
+    "./build_tfv_aed.sh",
+    "ls -l"
   ],
   "after_success": null,
   "group": "stable",
