@@ -1,0 +1,31 @@
+{
+  "language": "c",
+  "sudo": "required",
+  "dist": "trusty",
+  "before_install": [
+    "sudo apt-get update",
+    "sudo apt-get -y install libnetcdf-dev build-essential libnetcdff5 libnetcdfc7 libnetcdfc++4 libcf0 netcdf-doc netcdf-bin",
+    "sudo apt-get -y install libgd-dev libgd2-xpm-dev debhelper",
+    "chmod 755 .travis/install-icc.sh",
+    "sudo .travis/install-icc.sh --components icc,openmp,ipp,ifort --dest /opt/intel"
+  ],
+  "script": [
+    "source /opt/intel/bin/compilervars.sh intel64",
+    "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/intel/ism/bin/intel64",
+    "git clone --depth=50 --branch=dev https://github.com/AquaticEcoDynamics/libaed2.git ../libaed2",
+    "git clone --depth=50 --branch=master git://git.code.sf.net/p/gotm/code ../gotm-git",
+    "export AED2=true",
+    "export EXTERNAL_LIBS=shared",
+    "export SINGLE=true",
+    "export PRECISION=1",
+    "export FORTRAN_COMPILER=IFORT",
+    "export CURDIR=`pwd`",
+    "export GOTMDIR=${CURDIR}/../gotm-git",
+    "export AED2DIR=${CURDIR}/../libaed2",
+    "export FV_CONFIGURED=true",
+    "./build_tfv_aed.sh"
+  ],
+  "after_success": null,
+  "group": "stable",
+  "os": "linux"
+}
