@@ -4,6 +4,17 @@ if [ "$FV_CONFIGURED" != "true" ] ; then
   . ./FV_CONFIG
 fi
 
+if [ "$FORTRAN_COMPILER" = "IFORT" ] ; then
+  if [ -d /opt/intel/bin ] ; then
+    . /opt/intel/bin/compilervars.sh intel64
+  fi
+  which ifort >& /dev/null
+  if [ $? != 0 ] ; then
+    echo ifort compiler requested, but not found
+    exit 1
+  fi
+fi
+
 if [ "$AED2DIR" = "" ] ; then
   export AED2DIR=../libaed2
 fi
