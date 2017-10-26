@@ -37,14 +37,19 @@ export F90=$FC
 export F95=$FC
 
 cd ${AED2DIR}
+echo making in ${AED2DIR}
 make
 cd ${CURDIR}
 
-if [ -d ${AED2PLS} ] ; then
-   cd ${AED2PLS}
-   make
-   cd ${CURDIR}
+if [ "${AED2PLS}" != "" ] ; then
+   if [ -d ${AED2PLS} ] ; then
+      cd ${AED2PLS}
+      echo making in ${AED2PLS}
+      make
+      cd ${CURDIR}
+   fi
 fi
 
 #make distclean
+echo making in ${CURDIR}
 make
