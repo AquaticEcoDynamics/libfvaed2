@@ -20,10 +20,15 @@
     "export CURDIR=`pwd`",
     "export AED2DIR=${CURDIR}/../libaed2",
     "export FV_CONFIGURED=true",
-    "./build_tfv_aed.sh",
-    "ls -l lib"
+    "./build_tfv_aed.sh"
   ],
-  "after_success": "ls -l lib",
+  "after_success": [
+     "ls -l lib",
+     "echo 'build status = '$TRAVIS_TEST_RESULT"
+  ]
+  "after_failure": [
+     "echo 'fail status = '$TRAVIS_TEST_RESULT"
+  ]
   "group": "stable",
   "os": "linux"
 }
