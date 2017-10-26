@@ -25,10 +25,10 @@
   "after_success": [
      "ls -l lib",
      "echo 'build status = '$TRAVIS_TEST_RESULT"
-  ]
+  ],
   "after_failure": [
      "echo 'fail status = '$TRAVIS_TEST_RESULT"
-  ]
+  ],
   "group": "stable",
   "os": "linux"
 }
