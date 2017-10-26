@@ -4,7 +4,7 @@
   "dist": "trusty",
   "before_install": [
     "sudo apt-get update",
-    "sudo apt-get -y install libnetcdf-dev build-essential debhelper",
+    "sudo apt-get -y install build-essential debhelper",
     "chmod 755 .travis/install-icc.sh",
     "sudo .travis/install-icc.sh --components ipp,ifort --dest /opt/intel"
   ],
@@ -23,7 +23,7 @@
     "./build_tfv_aed.sh",
     "ls -l lib"
   ],
-  "after_success": null,
+  "after_success": "ls -l lib",
   "group": "stable",
   "os": "linux"
 }
