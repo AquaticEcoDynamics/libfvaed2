@@ -21,6 +21,6 @@ export GOTMDIR=${CURDIR}/../gotm-git
 export PLOTDIR=${CURDIR}/../libplot
 export FVAED2DIR=${CURDIR}
 export AED2DIR=${CURDIR}/../libaed2
-export AED2PLS=${CURDIR}/../libaed2-plus
+#export AED2PLS=${CURDIR}/../libaed2-plus
 
 export FV_CONFIGURED=true
