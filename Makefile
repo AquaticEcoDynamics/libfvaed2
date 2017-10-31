@@ -68,26 +68,26 @@ else
   TARGET = ${libdir}/$(OUTLIB).a
 endif
 
-all: $(TARGET)
+all: ${TARGET}
 
-${libdir}/lib$(LIBFVAED2).a: ${objdir} ${moddir} ${libdir} $(FVOBJECTS)
-	ar -rv $@ $(FVOBJECTS) $(LDFLAGS)
+${libdir}/lib${LIBFVAED2}.a: ${objdir} ${moddir} ${libdir} ${FVOBJECTS}
+	ar -rv $@ ${FVOBJECTS} ${LDFLAGS}
 	ranlib $@
 
-${libdir}/$(OUTLIB).a: ${libdir}/lib${LIBFVAED2}.a $(OBJECTS)
-	ar -rv $@ $(OBJECTS) $(LDFLAGS)
+${libdir}/${OUTLIB}.a: ${libdir}/lib${LIBFVAED2}.a ${OBJECTS}
+	ar -rv $@ ${OBJECTS} ${LDFLAGS}
 	ranlib $@
 
-${libdir}/$(OUTLIB).so: ${libdir}/lib${LIBFVAED2}.a $(OBJECTS)
-	ld -shared -o $@.$(VERS) $(OBJECTS) $(LDFLAGS) $(SOFLAGS)
-	ln -sf $(OUTLIB).so.$(VERS) $@
+${libdir}/${OUTLIB}.so: ${libdir}/lib${LIBFVAED2}.a ${OBJECTS}
+	ld -shared -o $@.${VERS} ${OBJECTS} ${LDFLAGS} ${SOFLAGS}
+	ln -sf ${OUTLIB}.so.${VERS} $@
 
 
 ${objdir}/%.o: ${srcdir}/%.F90 ${AED2DIR}/include/aed2.h
-	$(F90) $(FFLAGS) $(INCLUDES) -g -c $< -o $@
+	$(F90) ${FFLAGS} ${INCLUDES} -g -c $< -o $@
 
 ${objdir}/tuflowfv_external_wq.o: tuflowfv_external_wq/tuflowfv_external_wq.f90
-	$(FC) $(FFLAGS) $(TFFLAGS) $(INCLUDES) -Ituflowfv_external_wq -c $< -o $@
+	$(FC) ${FFLAGS} ${TFFLAGS} ${INCLUDES} -Ituflowfv_external_wq -c $< -o $@
 
 
 ${objdir}:

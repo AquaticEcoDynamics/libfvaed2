@@ -40,10 +40,12 @@ cd ${AED2DIR}
 make
 cd ${CURDIR}
 
-if [ -d ${AED2PLS} ] ; then
-   cd ${AED2PLS}
-   make
-   cd ${CURDIR}
+if [ "${AED2PLS}" != "" ] ; then
+   if [ -d ${AED2PLS} ] ; then
+      cd ${AED2PLS}
+      make
+      cd ${CURDIR}
+   fi
 fi
 
 #make distclean
