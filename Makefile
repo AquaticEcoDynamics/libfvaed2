@@ -63,21 +63,22 @@ OBJECTS=${objdir}/tuflowfv_external_wq.o
 SOFLAGS = --start-group ${libdir}/lib${LIBFVAED2}.a ${AED2DIR}/lib/lib${LIBAED2}.a --end-group
 
 ifeq ($(EXTERNAL_LIBS),shared)
-all: ${objdir} ${moddir} ${libdir} ${libdir}/lib${LIBFVAED2}.a ${libdir}/$(OUTLIB).so
+  TARGET = ${libdir}/$(OUTLIB).so
 else
-all: ${objdir} ${moddir} ${libdir} ${libdir}/lib${LIBFVAED2}.a ${libdir}/$(OUTLIB).a
+  TARGET = ${libdir}/$(OUTLIB).a
 endif
 
+all: $(TARGET)
 
-${libdir}/lib$(LIBFVAED2).a: $(FVOBJECTS)
+${libdir}/lib$(LIBFVAED2).a: ${objdir} ${moddir} ${libdir} $(FVOBJECTS)
 	ar -rv $@ $(FVOBJECTS) $(LDFLAGS)
 	ranlib $@
 
-${libdir}/$(OUTLIB).a: $(OBJECTS)
+${libdir}/$(OUTLIB).a: ${libdir}/lib${LIBFVAED2}.a $(OBJECTS)
 	ar -rv $@ $(OBJECTS) $(LDFLAGS)
 	ranlib $@
 
-${libdir}/$(OUTLIB).so: $(OBJECTS)
+${libdir}/$(OUTLIB).so: ${libdir}/lib${LIBFVAED2}.a $(OBJECTS)
 	ld -shared -o $@.$(VERS) $(OBJECTS) $(LDFLAGS) $(SOFLAGS)
 	ln -sf $(OUTLIB).so.$(VERS) $@
 
