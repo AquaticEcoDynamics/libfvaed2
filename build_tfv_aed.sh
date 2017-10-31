@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 if [ "$FV_CONFIGURED" != "true" ] ; then
   . ./FV_CONFIG
