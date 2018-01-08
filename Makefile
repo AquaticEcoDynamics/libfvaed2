@@ -6,7 +6,9 @@
 objdir=obj
 srcdir=src
 libdir=lib
-VERS=2.0.0
+VERS=2.0.0dev
+
+OSTYPE=$(shell uname -s)
 
 ifeq ($(AED2DIR),)
   AED2DIR=../libaed2
@@ -19,6 +21,14 @@ INCLUDES+=-I${AED2DIR}/mod
 LIBAED2=aed2
 LIBFVAED2=fvaed2
 moddir=mod
+
+ifeq ($(OSTYPE),Darwin)
+  SHARED=-dynamiclib -undefined dynamic_lookup
+  so_ext=dylib
+else
+  SHARED=-shared
+  so_ext=so
+endif
 
 ifeq ($(F90),ifort)
   INCLUDES+=-I/opt/intel/include
@@ -60,35 +70,33 @@ INCLUDES += -I${moddir}
 FVOBJECTS=${objdir}/fv_zones.o ${objdir}/fv_aed2.o
 OBJECTS=${objdir}/tuflowfv_external_wq.o
 
-SOFLAGS = --start-group ${libdir}/lib${LIBFVAED2}.a ${AED2DIR}/lib/lib${LIBAED2}.a --end-group
+SOFLAGS = ${libdir}/lib${LIBFVAED2}.a ${AED2DIR}/lib/lib${LIBAED2}.a
 
 ifeq ($(EXTERNAL_LIBS),shared)
-  TARGET = ${libdir}/$(OUTLIB).so
+  TARGET = ${libdir}/$(OUTLIB).${so_ext}
 else
   TARGET = ${libdir}/$(OUTLIB).a
 endif
 
-all: $(TARGET)
+all: ${TARGET}
 
-${libdir}/lib$(LIBFVAED2).a: ${objdir} ${moddir} ${libdir} $(FVOBJECTS)
-	ar -rv $@ $(FVOBJECTS) $(LDFLAGS)
+${libdir}/lib${LIBFVAED2}.a: ${objdir} ${moddir} ${libdir} ${FVOBJECTS}
+	ar -rv $@ ${FVOBJECTS} ${LDFLAGS}
 	ranlib $@
 
-${libdir}/$(OUTLIB).a: ${libdir}/lib${LIBFVAED2}.a $(OBJECTS)
-	ar -rv $@ $(OBJECTS) $(LDFLAGS)
+${libdir}/${OUTLIB}.a: ${libdir}/lib${LIBFVAED2}.a ${OBJECTS}
+	ar -rv $@ ${OBJECTS} ${LDFLAGS}
 	ranlib $@
 
-${libdir}/$(OUTLIB).so: ${libdir}/lib${LIBFVAED2}.a $(OBJECTS)
-	ld -shared -o $@.$(VERS) $(OBJECTS) $(LDFLAGS) $(SOFLAGS)
-	ln -sf $(OUTLIB).so.$(VERS) $@
-
+${libdir}/${OUTLIB}.${so_ext}: ${libdir}/lib${LIBFVAED2}.a ${OBJECTS}
+	$(CC) ${SHARED} -o $@.${VERS} ${OBJECTS} ${LDFLAGS} ${SOFLAGS}
+	ln -sf ${OUTLIB}.${so_ext}.${VERS} $@
 
 ${objdir}/%.o: ${srcdir}/%.F90 ${AED2DIR}/include/aed2.h
-	$(F90) $(FFLAGS) $(INCLUDES) -g -c $< -o $@
+	$(F90) ${FFLAGS} ${INCLUDES} -g -c $< -o $@
 
 ${objdir}/tuflowfv_external_wq.o: tuflowfv_external_wq/tuflowfv_external_wq.f90
-	$(FC) $(FFLAGS) $(TFFLAGS) $(INCLUDES) -Ituflowfv_external_wq -c $< -o $@
-
+	$(FC) ${FFLAGS} ${TFFLAGS} ${INCLUDES} -Ituflowfv_external_wq -c $< -o $@
 
 ${objdir}:
 	@mkdir ${objdir}
@@ -99,12 +107,11 @@ ${moddir}:
 ${libdir}:
 	@mkdir ${libdir}
 
-
 clean:
 	/bin/rm -f ${objdir}/*.o
 	/bin/rm -f ${moddir}/*.mod
 	/bin/rm -f ${libdir}/*.a
-	/bin/rm -f ${libdir}/*.so*
+	/bin/rm -f ${libdir}/*.${so_ext}*
 
 distclean: clean
 	/bin/rm -rf ${libdir} ${moddir} ${objdir} mod_s

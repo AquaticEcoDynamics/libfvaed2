@@ -4,7 +4,7 @@
   "dist": "trusty",
   "before_install": [
     "sudo apt-get update",
-    "sudo apt-get -y install build-essential debhelper",
+    "sudo apt-get -y install build-essential",
     "chmod 755 .travis/install-icc.sh",
     "sudo .travis/install-icc.sh --components ipp,ifort --dest /opt/intel"
   ],
@@ -22,8 +22,7 @@
     "export FV_CONFIGURED=true",
     "./build_tfv_aed.sh"
   ],
-  "after_success": "echo 'build status = '$TRAVIS_TEST_RESULT",
-  "after_failure": "echo 'fail status = '$TRAVIS_TEST_RESULT",
+  "after_success": null,
   "group": "stable",
   "os": "linux"
 }
