@@ -1200,7 +1200,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
       !# do riparian interfaces for this column and update fluxes
       flux_rip = zero_
-      shadefrac(col) = zero_
+      shadefrac(col) = one_  ! zero_
       rainloss(col) = zero_
       aed_active_col = active(col)
       IF( h(benth_map(col))<min_water_depth ) aed_active_col = .false.  ! MH TUFLOWFV 4cm dry cells
@@ -1518,6 +1518,7 @@ LOGICAL FUNCTION Riparian(column, actv, shade_frac, rain_loss)
    IF (link_solar_shade) shade_frac = localshade
 
    Riparian = actv
+
 END FUNCTION Riparian
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
