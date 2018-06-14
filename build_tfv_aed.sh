@@ -44,7 +44,6 @@ cd ${CURDIR}
 if [ "${AED2PLS}" != "" ] ; then
    if [ -d ${AED2PLS} ] ; then
       cd ${AED2PLS}
-      echo making in ${AED2PLS}
       make
       cd ${CURDIR}
    fi

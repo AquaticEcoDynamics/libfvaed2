@@ -13,7 +13,7 @@
 !#                                                                             #
 !# Developed by :                                                              #
 !#     AquaticEcoDynamics (AED) Group                                          #
-!#     School of Earth & Environment                                           #
+!#     School of Agriculture and Environment                                   #
 !# (C) The University of Western Australia                                     #
 !#                                                                             #
 !# Copyright by the AED-team @ UWA under the GNU Public License - www.gnu.org  #
@@ -195,9 +195,11 @@ SUBROUTINE calc_zone_areas(nCols, active, temp, salt, h, area, wnd, rho,       &
    zone_count = 0
 
    DO col=1, nCols
+      zon = zm(col)
+! if (zone(zon) == 11) &
+! print*,"ZoneIDX ",zon," zone = ",zone(zon)," Col ",col," area col ",area(col),"TEMP ",temp(col)," is ",active(col)
       IF (.NOT. active(col)) CYCLE
 
-      zon = zm(col)
       zone_area(zon)     = zone_area(zon) + area(col)
       zone_temp(zon)     = zone_temp(zon) + temp(col)
       zone_salt(zon)     = zone_salt(zon) + salt(col)
@@ -237,6 +239,28 @@ SUBROUTINE calc_zone_areas(nCols, active, temp, salt, h, area, wnd, rho,       &
    zone_bathy    =    zone_bathy / zone_count
    zone_I_0      =      zone_I_0 / zone_count
 !  zone_taub     =     zone_taub / zone_count
+
+   do zon=1,nZones
+! print*,"zoneidx ",zon," zone ",zone(zon)," count ",zone_count(zon)
+      if (zone_count(zon) == 0) then
+         zone_area(zon)     = 0.0
+         zone_temp(zon)     = 0.0
+         zone_salt(zon)     = 0.0
+         zone_rho(zon)      = 0.0
+         zone_height(zon)   = 0.0
+         zone_extc(zon)     = 0.0
+         zone_tss(zon)      = 0.0
+         zone_par(zon)      = 0.0
+         zone_wind(zon)     = 0.0
+         zone_rain(zon)     = 0.0
+         zone_rainloss(zon) = 0.0
+         zone_air_temp(zon) = 0.0
+         zone_bathy(zon)    = 0.0
+         zone_I_0(zon)      = 0.0
+!        zone_taub(zon)     = 0.0
+      endif
+   end do
+! pause
 END SUBROUTINE calc_zone_areas
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
