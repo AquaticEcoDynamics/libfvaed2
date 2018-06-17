@@ -108,6 +108,7 @@ ${libdir}:
 	@mkdir ${libdir}
 
 clean:
+	/bin/rm -f *.i90
 	/bin/rm -f ${objdir}/*.o
 	/bin/rm -f ${moddir}/*.mod
 	/bin/rm -f ${libdir}/*.a
