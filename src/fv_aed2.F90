@@ -31,12 +31,17 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "1.0.0dev"
+#define FV_AED_VERS "1.0.1ptm"
 
 #ifndef DEBUG
 #define DEBUG      0
 #endif
 #define _NO_ODE_   1
+
+#define PTM_STATUS 1
+#define PTM_2D_IDX 2
+#define PTM_3D_IDX 3
+#define PTM_LAYER  4
 
 !###############################################################################
 MODULE fv_aed2
@@ -46,12 +51,29 @@ MODULE fv_aed2
 
    IMPLICIT NONE
 
-   PUBLIC init_aed2_models, &
+   PUBLIC init_aed2_models,     &
           init_var_aed2_models, &
-          set_env_aed2_models, &
-          do_aed2_models, &
+          set_env_aed2_models,  &
+          set_env_particles,    &
+          do_aed2_models,       &
           clean_aed2_models
 
+   !#--------------------------------------------------------------------------#
+   !# Module Types
+   TYPE :: partgroup
+      INTEGER(KIND=4) :: NP                                ! Number of Particles
+!     INTEGER(KIND=4) :: id_stat, id_i2, id_i3, id_layer   ! Particle ISTAT Index Values
+!     INTEGER(KIND=4) :: id_bed_layer, id_motility         ! Particle ISTAT Index Values
+      INTEGER(KIND=4),POINTER,DIMENSION(:,:) :: istat      ! Particle Integer Status/Cell-index variables (4,NPart)
+      REAL(KIND=4),POINTER,DIMENSION(:,:) :: prop          ! Particle Property Vector (12,Npart)
+   ENDTYPE partgroup
+   TYPE :: partgroup_p
+      INTEGER :: idx, grp
+   ENDTYPE
+   TYPE :: partgroup_cell
+       INTEGER :: count, n
+       TYPE(partgroup_p),ALLOCATABLE,DIMENSION(:) :: prt
+   END TYPE partgroup_cell
 
    !#--------------------------------------------------------------------------#
    !# Module Data
@@ -62,8 +84,8 @@ MODULE fv_aed2
    !# Main arrays storing/pointing to the state and diagnostic variables
    AED_REAL,DIMENSION(:,:),POINTER :: cc, cc_diag
 
-   !# Array pointing to the lagrangian particle masses and diagnostic properties
-   AED_REAL,DIMENSION(:,:),POINTER :: pp, pp_diag
+!  !# Array pointing to the lagrangian particle masses and diagnostic properties
+!  AED_REAL,DIMENSION(:,:),POINTER :: pp, pp_diag
 
    !# Name of files being used to load initial values for benthic
    !  or benthic_diag vars, and the horizontal routing table for riparian flows
@@ -103,6 +125,11 @@ MODULE fv_aed2
    AED_REAL,DIMENSION(:),  POINTER :: area, bathy, shadefrac, rainloss
    AED_REAL,DIMENSION(:),  POINTER :: ustar_bed
    AED_REAL,DIMENSION(:),  POINTER :: wv_uorb, wv_t
+
+   !# Particle groups
+   INTEGER :: num_groups
+   TYPE(partgroup),DIMENSION(:),POINTER :: particle_groups
+   TYPE(partgroup_cell),DIMENSION(:),ALLOCATABLE :: all_particles
 
    !# maximum single precision real is 2**128 = 3.4e38
    AED_REAL :: glob_min = -1.0e38
@@ -726,7 +753,7 @@ SUBROUTINE set_env_aed2_models(dt_,              &
 !if ( .not. associated(tss) ) print*, " No association for tss"
 !if ( .not. associated(active) ) print*, " No association for active"
 #endif
-! CALL CheckPhreatic
+!  CALL CheckPhreatic
 
    IF (old_zones) THEN
       !# We allocate the full size array because that's how the indices are presented
@@ -739,6 +766,9 @@ SUBROUTINE set_env_aed2_models(dt_,              &
    ELSE
       CALL init_zones(ubound(mat_id_, 2), mat_id_, n_aed2_vars, n_vars, n_vars_ben)
    ENDIF
+
+!print*,"allocating all_parts with ", ubound(temp,1), " cells"
+   ALLOCATE(all_particles(ubound(temp,1)))
 
 END SUBROUTINE set_env_aed2_models
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1086,6 +1116,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    AED_REAL :: rain_loss
    LOGICAL  :: aed_active_col
    AED_REAL,DIMENSION(:),POINTER :: tpar
+   INTEGER :: grp, prt
 !
 !-------------------------------------------------------------------------------
 !BEGIN
@@ -1109,6 +1140,55 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       ENDIF
       CALL calc_zone_areas(nCols, active, temp, salt, h, area, wnd, rho,       &
                  extcoeff, I_0, tpar, tss, rain, rainloss, air_temp, bathy, col_taub)
+   ENDIF
+
+   IF (do_particle_bgc) THEN
+      DO i=1, size(all_particles)
+         IF (ALLOCATED(all_particles(i)%prt)) DEALLOCATE(all_particles(i)%prt)
+         all_particles(i)%count = 0
+      ENDDO
+      DO grp=1,num_groups
+         DO prt=1,particle_groups(grp)%NP
+            IF ( particle_groups(grp)%istat(PTM_STATUS,prt) >= 0 ) THEN
+               i = particle_groups(grp)%istat(PTM_3D_IDX,prt)
+               IF ( i < 1 .OR. i > size(all_particles) ) THEN
+                  print*,"idx out of range", i, size(all_particles)
+                  stop
+               ELSE
+                  all_particles(i)%count = all_particles(i)%count + 1
+               ENDIF
+            ENDIF
+         ENDDO
+      ENDDO
+      DO grp=1,num_groups
+         DO prt=1,particle_groups(grp)%NP
+            IF ( particle_groups(grp)%istat(PTM_STATUS,prt) < 0 ) CYCLE  !# ignore these
+
+            i = particle_groups(grp)%istat(PTM_3D_IDX,prt)
+            IF ( i >= 1 .AND. i <= size(all_particles) ) THEN
+               IF (.NOT. ALLOCATED(all_particles(i)%prt)) THEN
+                  ALLOCATE(all_particles(i)%prt(all_particles(i)%count))
+                  all_particles(i)%n = 0
+               ENDIF
+               j = all_particles(i)%n + 1
+               IF (j <= all_particles(i)%count ) THEN
+                  all_particles(i)%prt(j)%grp = grp
+                  all_particles(i)%prt(j)%idx = prt
+                  all_particles(i)%n = j
+!              ELSE
+!                 print*,"Ooops, error in PTM", j, all_particles(i)%count
+               ENDIF
+!           ELSE
+!              print*,"idx out of range", i, size(all_particles)
+!              print*,"grp", grp, " prt ",prt
+!              print*,"istat 1", particle_groups(grp)%istat(1,prt)
+!              print*,"istat 2", particle_groups(grp)%istat(2,prt)
+!              print*,"istat 3", particle_groups(grp)%istat(3,prt)
+!              print*,"istat 4", particle_groups(grp)%istat(4,prt)
+!              stop
+            ENDIF
+         ENDDO
+      ENDDO
    ENDIF
 
 !!$OMP DO
@@ -1220,7 +1300,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       IF ( ThisStep >= n_equil_substep ) CALL Update(column, bot-top+1)
 
       !# find the particles in this column and update particle bgc
-      IF (do_particle_bgc) CALL Particles(column, bot-top+1, h(top:bot))
+      IF (do_particle_bgc) CALL Particles(column, bot-top+1, all_particles(top:bot))
 
 #if _NO_ODE_
       !# for this column, do the main kinetic/bgc flux calculation
@@ -1547,30 +1627,62 @@ END SUBROUTINE Update
 
 
 !###############################################################################
-SUBROUTINE Particles(column, count, h_)
+SUBROUTINE set_env_particles(ng,parts)
+!-------------------------------------------------------------------------------
+!ARGUMENTS
+   INTEGER :: ng
+   TYPE(partgroup),DIMENSION(:),TARGET,INTENT(in) :: parts
+!
+!-------------------------------------------------------------------------------
+!BEGIN
+   IF (.NOT. ASSOCIATED(particle_groups)) THEN
+      print*,"Setting Particle groups"
+      particle_groups => parts
+      num_groups = ng
+   ENDIF
+END SUBROUTINE set_env_particles
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+!###############################################################################
+SUBROUTINE Particles(column, count, parts)
 !-------------------------------------------------------------------------------
 !
-! Calculate biogeochemical transformations on particles !TO BE COMPELTED!
+! Calculate biogeochemical transformations on particles !TO BE COMPLETED!
 !
 !-------------------------------------------------------------------------------
 !ARGUMENTS
    TYPE (aed2_column_t), INTENT(inout) :: column(:)
+   TYPE(partgroup_cell), INTENT(inout) :: parts(:)
    INTEGER,  INTENT(in)    :: count
-   AED_REAL, INTENT(inout) :: h_(:)
 !
 !LOCAL VARIABLES:
-   INTEGER :: i
-   AED_REAL :: zz
+   INTEGER :: ppid, lev, grp, prt, n, pt
+   AED_REAL,DIMENSION(16) :: zz
 !
 !-------------------------------------------------------------------------------
 !BEGIN
+   IF (.NOT. ASSOCIATED(particle_groups) .OR. num_groups == 0) RETURN
    zz = zero_
+   ppid = 0
 
- ! CALL aed2_particle_bgc(column,1,ppid ...)
-   IF (count <= 1) RETURN
+!# FVPTM.F90:    uvw0 => part%prop(part%id_uvw0:part%id_uvw0+2,i)
+!# FVPTM.F90:    uvw => part%prop(part%id_uvw:part%id_uvw+2,i)
+!# FVPTM.F90:    nu => part%prop(part%id_nu:part%id_nu+3,i)
+!# FVPTM.F90:    wsel => part%prop(part%id_wsel,i)
+!# FVPTM.F90:    water_depth => part%prop(part%id_watd,i)
+!# FVPTM.F90:    part_depth => part%prop(part%id_partd,i)
 
-   DO i = 2, count
-  !   CALL aed2_particle_bgc(column,count,ppid ...)
+   DO lev=1,count
+      DO pt=1,parts(lev)%count
+         grp = parts(lev)%prt(pt)%grp ; prt = parts(lev)%prt(pt)%idx
+         IF ( particle_groups(grp)%istat(PTM_STATUS,prt) >= 0 ) THEN
+            n = min(16, size(particle_groups(grp)%prop(:,prt)))
+            zz(1:n) = particle_groups(grp)%prop(1:n,prt)
+            CALL aed2_particle_bgc(column,lev,ppid,zz)
+            particle_groups(grp)%prop(1:n,prt) = zz(1:n)
+         ENDIF
+      ENDDO
    ENDDO
 END SUBROUTINE Particles
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

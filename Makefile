@@ -6,7 +6,7 @@
 objdir=obj
 srcdir=src
 libdir=lib
-VERS=2.0.0dev
+VERS=2.0.1ptm
 
 OSTYPE=$(shell uname -s)
 
