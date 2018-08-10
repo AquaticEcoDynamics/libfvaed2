@@ -38,11 +38,6 @@
 #endif
 #define _NO_ODE_   1
 
-#define PTM_STATUS 1
-#define PTM_2D_IDX 2
-#define PTM_3D_IDX 3
-#define PTM_LAYER  4
-
 !###############################################################################
 MODULE fv_aed2
 !-------------------------------------------------------------------------------
@@ -62,10 +57,18 @@ MODULE fv_aed2
    !# Module Types
    TYPE :: partgroup
       INTEGER(KIND=4) :: NP                                ! Number of Particles
-!     INTEGER(KIND=4) :: id_stat, id_i2, id_i3, id_layer   ! Particle ISTAT Index Values
-!     INTEGER(KIND=4) :: id_bed_layer, id_motility         ! Particle ISTAT Index Values
+      INTEGER(KIND=4) :: NU                                ! Number of Conserved Variables
+      INTEGER(KIND=4) :: id_stat, id_i2, id_i3, id_layer   ! Particle ISTAT Index Values
+      INTEGER(KIND=4) :: id_bed_layer, id_motility         ! Particle ISTAT Index Values
+      INTEGER(KIND=4) :: id_uvw0, id_uvw, id_nu, id_wnd    ! Particle PROP Index Values
+      INTEGER(KIND=4) :: id_wsel, id_watd, id_partd        ! Particle PROP Index Values
+      INTEGER(KIND=4) :: id_age, id_state                  ! Particle TSTAT Index Values
+
       INTEGER(KIND=4),POINTER,DIMENSION(:,:) :: istat      ! Particle Integer Status/Cell-index variables (4,NPart)
+      REAL(KIND=8),POINTER,DIMENSION(:,:) :: tstat         ! Particle Time/Age Vector (2,Npart)
+
       REAL(KIND=4),POINTER,DIMENSION(:,:) :: prop          ! Particle Property Vector (12,Npart)
+      REAL(KIND=4),POINTER,DIMENSION(:,:) :: U             ! Particle Conserved Variable Vector (NU,NP)
    ENDTYPE partgroup
    TYPE :: partgroup_p
       INTEGER :: idx, grp
@@ -1116,7 +1119,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
    AED_REAL :: rain_loss
    LOGICAL  :: aed_active_col
    AED_REAL,DIMENSION(:),POINTER :: tpar
-   INTEGER :: grp, prt
+   INTEGER :: grp, prt, stat, idx3d
 !
 !-------------------------------------------------------------------------------
 !BEGIN
@@ -1128,7 +1131,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 
    IF ( request_nearest ) CALL fill_nearest(nCols)
 
-   IF ( .not. reinited ) CALL re_initialize()
+   IF ( .NOT. reinited ) CALL re_initialize()
 
    ThisStep = ThisStep + 1
 
@@ -1148,23 +1151,25 @@ SUBROUTINE do_aed2_models(nCells, nCols)
          all_particles(i)%count = 0
       ENDDO
       DO grp=1,num_groups
+         stat = particle_groups(grp)%id_stat
+         idx3d = particle_groups(grp)%id_i3
          DO prt=1,particle_groups(grp)%NP
-            IF ( particle_groups(grp)%istat(PTM_STATUS,prt) >= 0 ) THEN
-               i = particle_groups(grp)%istat(PTM_3D_IDX,prt)
-               IF ( i < 1 .OR. i > size(all_particles) ) THEN
-                  print*,"idx out of range", i, size(all_particles)
-                  stop
-               ELSE
+            IF ( particle_groups(grp)%istat(stat, prt) >= 0 ) THEN
+               i = particle_groups(grp)%istat(idx3d, prt)
+               IF ( i >= 1 .AND. i <= size(all_particles) ) THEN
                   all_particles(i)%count = all_particles(i)%count + 1
+!              ELSE
+!                 print*,"idx out of range", i, size(all_particles)
+!                 stop
                ENDIF
             ENDIF
          ENDDO
-      ENDDO
-      DO grp=1,num_groups
+!     ENDDO
+!     DO grp=1,num_groups
          DO prt=1,particle_groups(grp)%NP
-            IF ( particle_groups(grp)%istat(PTM_STATUS,prt) < 0 ) CYCLE  !# ignore these
+            IF ( particle_groups(grp)%istat(stat, prt) < 0 ) CYCLE  !# ignore these
 
-            i = particle_groups(grp)%istat(PTM_3D_IDX,prt)
+            i = particle_groups(grp)%istat(idx3d, prt)
             IF ( i >= 1 .AND. i <= size(all_particles) ) THEN
                IF (.NOT. ALLOCATED(all_particles(i)%prt)) THEN
                   ALLOCATE(all_particles(i)%prt(all_particles(i)%count))
@@ -1657,8 +1662,8 @@ SUBROUTINE Particles(column, count, parts)
    INTEGER,  INTENT(in)    :: count
 !
 !LOCAL VARIABLES:
-   INTEGER :: ppid, lev, grp, prt, n, pt
-   AED_REAL,DIMENSION(16) :: zz
+   INTEGER :: ppid, lev, grp, prt, n, pt, NU
+   AED_REAL,DIMENSION(18) :: zz
 !
 !-------------------------------------------------------------------------------
 !BEGIN
@@ -1666,21 +1671,60 @@ SUBROUTINE Particles(column, count, parts)
    zz = zero_
    ppid = 0
 
-!# FVPTM.F90:    uvw0 => part%prop(part%id_uvw0:part%id_uvw0+2,i)
-!# FVPTM.F90:    uvw => part%prop(part%id_uvw:part%id_uvw+2,i)
-!# FVPTM.F90:    nu => part%prop(part%id_nu:part%id_nu+3,i)
-!# FVPTM.F90:    wsel => part%prop(part%id_wsel,i)
-!# FVPTM.F90:    water_depth => part%prop(part%id_watd,i)
-!# FVPTM.F90:    part_depth => part%prop(part%id_partd,i)
-
    DO lev=1,count
       DO pt=1,parts(lev)%count
          grp = parts(lev)%prt(pt)%grp ; prt = parts(lev)%prt(pt)%idx
-         IF ( particle_groups(grp)%istat(PTM_STATUS,prt) >= 0 ) THEN
+         IF ( particle_groups(grp)%istat(particle_groups(grp)%id_stat, prt) >= 0 ) THEN
+            NU = particle_groups(grp)%NU
             n = min(16, size(particle_groups(grp)%prop(:,prt)))
-            zz(1:n) = particle_groups(grp)%prop(1:n,prt)
+
+!           zz(1:n) = particle_groups(grp)%prop(1:n,prt)
+
+            zz(1)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)
+            zz(2)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+1, prt)
+            zz(3)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+2, prt)
+            zz(4)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw, prt)
+            zz(5)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw+1, prt)
+            zz(6)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw+2, prt)
+            zz(7)  = particle_groups(grp)%prop(particle_groups(grp)%id_nu, prt)
+            zz(8)  = particle_groups(grp)%prop(particle_groups(grp)%id_nu+1, prt)
+            zz(9)  = particle_groups(grp)%prop(particle_groups(grp)%id_nu+2, prt)
+            zz(10) = particle_groups(grp)%prop(particle_groups(grp)%id_nu+3, prt)
+            zz(11) = particle_groups(grp)%prop(particle_groups(grp)%id_wsel, prt)
+            zz(12) = particle_groups(grp)%prop(particle_groups(grp)%id_watd, prt)
+            zz(13) = particle_groups(grp)%prop(particle_groups(grp)%id_partd, prt)
+            zz(14) = particle_groups(grp)%prop(particle_groups(grp)%id_wnd, prt)
+         !  zz(15) = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)
+         !  zz(16) = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)
+            IF (NU > 0) zz(15) = particle_groups(grp)%U(1, prt)
+            IF (NU > 1) zz(16) = particle_groups(grp)%U(2, prt)
+
+            zz(17:18) = particle_groups(grp)%tstat(1:2,prt)
+
             CALL aed2_particle_bgc(column,lev,ppid,zz)
-            particle_groups(grp)%prop(1:n,prt) = zz(1:n)
+
+!           particle_groups(grp)%prop(1:n,prt) = zz(1:n)
+
+            particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)   = z(1)
+            particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+1, prt) = z(2)
+            particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+2, prt) = z(3)
+            particle_groups(grp)%prop(particle_groups(grp)%id_uvw, prt)    = z(4)
+            particle_groups(grp)%prop(particle_groups(grp)%id_uvw+1, prt)  = z(5)
+            particle_groups(grp)%prop(particle_groups(grp)%id_uvw+2, prt)  = z(6)
+            particle_groups(grp)%prop(particle_groups(grp)%id_nu, prt)     = z(7)
+            particle_groups(grp)%prop(particle_groups(grp)%id_nu+1, prt)   = z(8)
+            particle_groups(grp)%prop(particle_groups(grp)%id_nu+2, prt)   = z(9)
+            particle_groups(grp)%prop(particle_groups(grp)%id_nu+3, prt)   = z(10)
+            particle_groups(grp)%prop(particle_groups(grp)%id_wsel, prt)   = z(11)
+            particle_groups(grp)%prop(particle_groups(grp)%id_watd, prt)   = z(12)
+            particle_groups(grp)%prop(particle_groups(grp)%id_partd, prt)  = z(13)
+            particle_groups(grp)%prop(particle_groups(grp)%id_wnd, prt)    = z(14)
+         !  particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)   = z(15)
+         !  particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)   = z(16)
+
+            IF (NU > 0) particle_groups(grp)%U(1, prt) = zz(15)
+            IF (NU > 1) particle_groups(grp)%U(2, prt) = zz(16)
+
          ENDIF
       ENDDO
    ENDDO
