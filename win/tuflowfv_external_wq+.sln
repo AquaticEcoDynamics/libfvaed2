@@ -13,8 +13,6 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libaed2+", "..\..\libaed2-p
 		{8C8BCAF8-FA3D-4125-A1F5-04852E7990D1} = {8C8BCAF8-FA3D-4125-A1F5-04852E7990D1}
 	EndProjectSection
 EndProject
-Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libaed2", "..\..\libaed2\win\libaed2.vfproj", "{8C8BCAF8-FA3D-4125-A1F5-04852E7990D1}"
-EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "tuflowfv_external_wq+", "tuflowfv_external_wq+.vfproj", "{DE94B943-D973-4C1E-A427-E3CD39FBA78D}"
 	ProjectSection(ProjectDependencies) = postProject
 		{F521D689-F526-488C-A80A-54FAB6929F85} = {F521D689-F526-488C-A80A-54FAB6929F85}
