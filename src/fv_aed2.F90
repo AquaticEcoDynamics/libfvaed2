@@ -31,7 +31,7 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "1.0.1ptm"
+#define FV_AED_VERS "1.0.1ptm2"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -1123,7 +1123,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 !
 !-------------------------------------------------------------------------------
 !BEGIN
-! print *," START do_aed2_models"
+  print *," START do_aed2_models"
 
    !#--------------------------------------------------------------------
    !# START-UP JOBS
@@ -1387,6 +1387,8 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       ENDDO
     ENDIF
 
+print *,"Finished AED2 step"
+
 CONTAINS
 
    !###############################################################################
@@ -1403,7 +1405,7 @@ CONTAINS
       DO col=1, nCols
          top = surf_map(col)
          bot = benth_map(col)
-         count = top-bot+1
+         count = bot-top+1
          CALL define_column(column, col, cc, cc_diag, flux, flux_atm, flux_ben, flux_rip)
          DO lev=1, count
             CALL aed2_initialize(column, lev)
