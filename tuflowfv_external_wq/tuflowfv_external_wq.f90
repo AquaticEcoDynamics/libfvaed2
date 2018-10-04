@@ -58,6 +58,7 @@ TYPE :: fvwq
     REAL(wqrk),POINTER,DIMENSION(:) :: temp                 ! TEMPERATURE POINTER (NC3)
     REAL(wqrk),POINTER,DIMENSION(:) :: tss                  ! TOTAL SUSPENDED SOLIDS POINTER (NC3)
     REAL(wqrk),POINTER,DIMENSION(:) :: vvel                 ! VERTICAL VELOCITIES (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: cvel                 ! CELL VELOCITIES (NC3)
     REAL(wqrk),POINTER,DIMENSION(:,:) :: par                ! NET SHORTWAVE RADIATION (NC3)
     REAL(wqrk),POINTER,DIMENSION(:,:) :: cc                 ! WQ CONSTITUENT CONCENTRATIONS (NWQ,NC3)
     REAL(wqrk),POINTER,DIMENSION(:,:) :: diag               ! DIAGNOSTIC WQ VARIABLES (NDIAG,NC3)
@@ -68,7 +69,7 @@ TYPE :: fvwq
     REAL(wqrk),POINTER,DIMENSION(:) :: ustar_bed            ! BED FRICTION VELOCITY (NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: ustar_surf           ! SURFACE FRICTION VELOCITY (NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: air_temp             ! AIR TEMPERATURE (NC2)
-    REAL(wqrk),POINTER,DIMENSION(:) :: wv_uorb              !
+    REAL(wqrk),POINTER,DIMENSION(:) :: wv_uorb              ! Wave Stress ?
     REAL(wqrk),POINTER,DIMENSION(:) :: wv_t                 !
     ! Arrays that control feedbacks between the models
     REAL(wqrk),POINTER,DIMENSION(:) :: bioshade             ! BIOGEOCHEMICAL LIGHT EXTINCTION COEFFICIENT RETURNED FROM WQ (NC3)
@@ -180,6 +181,8 @@ SUBROUTINE tuflowfv_construct_extern_wq(nlog)
                             wq%thick,           &
                             wq%tss,             &
                             wq%par,             &
+                            wq%vvel,            &
+                            wq%cvel,            &
                             ! 3D feedback arrays
                             wq%bioshade,        &
                             ! 2D env variables

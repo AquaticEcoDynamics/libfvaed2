@@ -128,6 +128,7 @@ MODULE fv_aed2
    AED_REAL,DIMENSION(:),  POINTER :: area, bathy, shadefrac, rainloss
    AED_REAL,DIMENSION(:),  POINTER :: ustar_bed
    AED_REAL,DIMENSION(:),  POINTER :: wv_uorb, wv_t
+   AED_REAL,DIMENSION(:),  POINTER :: vvel, cvel   !# vertical velocity, cell velocity
 
    !# Particle groups
    INTEGER :: num_groups
@@ -653,6 +654,8 @@ SUBROUTINE set_env_aed2_models(dt_,              &
                                h_,               &
                                tss_,             &
                                rad_,             &
+                               vvel_,            &
+                               cvel_,            &
                             ! 3D feedback arrays
                                extcoeff_,        &
                             ! 2D env variables
@@ -682,6 +685,7 @@ SUBROUTINE set_env_aed2_models(dt_,              &
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: temp_, salt_, rho_, h_,    &
                                                     area_, tss_, extcoeff_, z_
    AED_REAL, INTENT(in), DIMENSION(:,:), POINTER :: rad_
+   AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: vvel_, cvel_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: I_0_, wnd_, ustar_bed_, ustar_surf_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: wv_uorb_, wv_t_
    AED_REAL, INTENT(in), DIMENSION(:),   POINTER :: rain_, bathy_
@@ -726,6 +730,9 @@ SUBROUTINE set_env_aed2_models(dt_,              &
                          !# output of biogeochemistry, input for physics
    salt => salt_
    temp => temp_
+
+   vvel => vvel_
+   cvel => cvel_
 
    rho => rho_
    tss => tss_
@@ -832,6 +839,7 @@ SUBROUTINE check_data
             CASE ( 'extc_coef' )   ; tvar%found = .true.
             CASE ( 'tss' )         ; tvar%found = .true.
             CASE ( 'par' )         ; tvar%found = .true.
+            CASE ( 'cell_vel' )    ; tvar%found = .true.
             CASE ( 'nir' )         ; tvar%found = .true.
             CASE ( 'uva' )         ; tvar%found = .true.
             CASE ( 'uvb' )         ; tvar%found = .true.
@@ -921,6 +929,7 @@ SUBROUTINE define_column(column, col, cc, cc_diag, flux_pel, flux_atm, flux_ben,
                                      ELSE
                                         column(av)%cell => par(top:bot)
                                      ENDIF
+            CASE ( 'cell_vel' )    ; column(av)%cell => cvel(top:bot)
             CASE ( 'nir' )         ; column(av)%cell => nir(top:bot)
             CASE ( 'uva' )         ; column(av)%cell => uva(top:bot)
             CASE ( 'uvb' )         ; column(av)%cell => uvb(top:bot)
