@@ -31,7 +31,7 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "1.0.1ptm2"
+#define FV_AED_VERS "1.0.1ptm3"
 
 #ifndef DEBUG
 #define DEBUG      0
@@ -57,16 +57,15 @@ MODULE fv_aed2
    !# Module Types
    TYPE :: partgroup
       INTEGER(KIND=4) :: NP                                ! Number of Particles
-      INTEGER(KIND=4) :: NU                                ! Number of Conserved Variables
       INTEGER(KIND=4) :: id_stat, id_i2, id_i3, id_layer   ! Particle ISTAT Index Values
       INTEGER(KIND=4) :: id_bed_layer, id_motility         ! Particle ISTAT Index Values
       INTEGER(KIND=4) :: id_uvw0, id_uvw, id_nu, id_wnd    ! Particle PROP Index Values
       INTEGER(KIND=4) :: id_wsel, id_watd, id_partd        ! Particle PROP Index Values
       INTEGER(KIND=4) :: id_age, id_state                  ! Particle TSTAT Index Values
-
+      INTEGER(KIND=4) :: i_next                            ! next particle index
       INTEGER(KIND=4),POINTER,DIMENSION(:,:) :: istat      ! Particle Integer Status/Cell-index variables (4,NPart)
       REAL(KIND=8),POINTER,DIMENSION(:,:) :: tstat         ! Particle Time/Age Vector (2,Npart)
-
+      REAL(KIND=8),POINTER,DIMENSION(:,:) :: xyz           ! particle position vector
       REAL(KIND=4),POINTER,DIMENSION(:,:) :: prop          ! Particle Property Vector (12,Npart)
       REAL(KIND=4),POINTER,DIMENSION(:,:) :: U             ! Particle Conserved Variable Vector (NU,NP)
    ENDTYPE partgroup
@@ -241,13 +240,13 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
    print *,'    link options configured between TFV & AED2 - '
    print *,'        link_ext_par       :  ',link_ext_par
    print *,'        link_water_clarity :  ',link_water_clarity
-   print *,'        link_surface_drag  :  ',link_surface_drag,' (not active)'
+   print *,'        link_surface_drag  :  ',link_surface_drag,' (not implemented)'
    print *,'        link_bottom_drag   :  ',link_bottom_drag
    print *,'        link_wave_stress   :  ',link_wave_stress
    print *,'        link_solar_shade   :  ',link_solar_shade
    print *,'        link_rain_loss     :  ',link_rain_loss
-   print *,'        link_particle_bgc  :  ',do_particle_bgc,' (not active)'
-   print *,'        link_water_density :  ',link_water_density,' (not active)'
+   print *,'        link_particle_bgc  :  ',do_particle_bgc,' (under development)'
+   print *,'        link_water_density :  ',link_water_density,' (not implemented)'
 
    ! Process input file (aed2.nml) to get selected models
    print *,"    reading aed2_models config from ",TRIM(tname)
@@ -1160,12 +1159,16 @@ SUBROUTINE do_aed2_models(nCells, nCols)
          all_particles(i)%count = 0
       ENDDO
       DO grp=1,num_groups
-         stat = particle_groups(grp)%id_stat
-         idx3d = particle_groups(grp)%id_i3
+         stat = particle_groups(grp)%id_stat  ! should be 1
+         idx3d = particle_groups(grp)%id_i3   ! should be 3
          DO prt=1,particle_groups(grp)%NP
+!print*,"stat = ",stat," prt = ",prt, " num prt = ",particle_groups(grp)%NP
+!print*,"grp = ", grp, " num grp = ", num_groups, " idx3d = ",idx3d
+!if (.not.associated(particle_groups(grp)%istat)) print*,"istat doesn't exist"
             IF ( particle_groups(grp)%istat(stat, prt) >= 0 ) THEN
                i = particle_groups(grp)%istat(idx3d, prt)
                IF ( i >= 1 .AND. i <= size(all_particles) ) THEN
+!print*,"found particle at ",i
                   all_particles(i)%count = all_particles(i)%count + 1
 !              ELSE
 !                 print*,"idx out of range", i, size(all_particles)
@@ -1652,7 +1655,6 @@ SUBROUTINE set_env_particles(ng,parts)
 !-------------------------------------------------------------------------------
 !BEGIN
    IF (.NOT. ASSOCIATED(particle_groups)) THEN
-      print*,"Setting Particle groups"
       particle_groups => parts
       num_groups = ng
    ENDIF
@@ -1675,6 +1677,7 @@ SUBROUTINE Particles(column, count, parts)
 !LOCAL VARIABLES:
    INTEGER :: ppid, lev, grp, prt, n, pt, NU
    AED_REAL,DIMENSION(18) :: zz
+   INTEGER :: stat, idxi3
 !
 !-------------------------------------------------------------------------------
 !BEGIN
@@ -1683,10 +1686,13 @@ SUBROUTINE Particles(column, count, parts)
    ppid = 0
 
    DO lev=1,count
+!print*,"Particles lev = ", lev,parts(lev)%count
       DO pt=1,parts(lev)%count
          grp = parts(lev)%prt(pt)%grp ; prt = parts(lev)%prt(pt)%idx
-         IF ( particle_groups(grp)%istat(particle_groups(grp)%id_stat, prt) >= 0 ) THEN
-            NU = particle_groups(grp)%NU
+         stat = particle_groups(grp)%id_stat   ! should be 1
+         idxi3 =  particle_groups(grp)%id_i3   ! should be 3
+         IF ( particle_groups(grp)%istat(stat, prt) >= 0 ) THEN
+            NU = ubound(particle_groups(grp)%U, 1)
             n = min(16, size(particle_groups(grp)%prop(:,prt)))
 
 !           zz(1:n) = particle_groups(grp)%prop(1:n,prt)
@@ -1703,7 +1709,7 @@ SUBROUTINE Particles(column, count, parts)
             zz(10) = particle_groups(grp)%prop(particle_groups(grp)%id_nu+3, prt)
             zz(11) = particle_groups(grp)%prop(particle_groups(grp)%id_wsel, prt)
             zz(12) = particle_groups(grp)%prop(particle_groups(grp)%id_watd, prt)
-            zz(13) = particle_groups(grp)%prop(particle_groups(grp)%id_partd, prt)
+            zz(13) = particle_groups(grp)%prop(particle_groups(grp)%id_partd, prt) ! probably settling velocity
             zz(14) = particle_groups(grp)%prop(particle_groups(grp)%id_wnd, prt)
 
             IF (NU > 0) zz(15) = particle_groups(grp)%U(1, prt)  ! I think this is mass
