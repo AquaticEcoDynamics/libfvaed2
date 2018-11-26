@@ -1740,6 +1740,7 @@ SUBROUTINE Particles(column, count, parts)
             IF (NU > 1) particle_groups(grp)%U(2, prt) = zz(16)
 
          ENDIF
+         particle_groups(grp)%tstat(2,prt) = particle_groups(grp)%tstat(2,prt) + dt
       ENDDO
    ENDDO
 END SUBROUTINE Particles
