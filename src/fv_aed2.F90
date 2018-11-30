@@ -226,7 +226,7 @@ SUBROUTINE init_aed2_models(namlst,dname,nwq_var,nben_var,ndiag_var,names,bennam
 
    ! Process input file (aed2.nml) to get run options
    print *, "    initialise aed2_core "
-   IF ( aed2_init_core(dname) /= 0 ) STOP "Initialisation of aed2_core failed"
+   IF ( aed2_init_core(dname, .true.) /= 0 ) STOP "Initialisation of aed2_core failed"
    CALL aed2_print_version
    tname = TRIM(dname)//'aed2.nml'
    print *,"    reading fv_aed2 config from ",TRIM(tname)
