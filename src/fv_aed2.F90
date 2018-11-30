@@ -31,7 +31,7 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "1.0.1ptm3"
+#define FV_AED_VERS "1.0.1ptm4"
 
 #ifndef DEBUG
 #define DEBUG      0
