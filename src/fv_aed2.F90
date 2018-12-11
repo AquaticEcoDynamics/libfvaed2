@@ -1676,7 +1676,7 @@ SUBROUTINE Particles(column, count, parts)
 !
 !LOCAL VARIABLES:
    INTEGER :: ppid, lev, grp, prt, n, pt, NU
-   AED_REAL,DIMENSION(18) :: zz
+   AED_REAL,DIMENSION(20) :: zz
    INTEGER :: stat, idxi3
 !
 !-------------------------------------------------------------------------------
@@ -1716,6 +1716,7 @@ SUBROUTINE Particles(column, count, parts)
             IF (NU > 1) zz(16) = particle_groups(grp)%U(2, prt)
 
             zz(17:18) = particle_groups(grp)%tstat(1:2,prt)
+            zz(19) = particle_groups(grp)%istat(stat, prt)
 
             CALL aed2_particle_bgc(column,lev,ppid,zz)
 
@@ -1738,7 +1739,7 @@ SUBROUTINE Particles(column, count, parts)
 
             IF (NU > 0) particle_groups(grp)%U(1, prt) = zz(15)  ! I think this is mass
             IF (NU > 1) particle_groups(grp)%U(2, prt) = zz(16)
-
+            particle_groups(grp)%istat(stat, prt) = zz(19)
          ENDIF
          particle_groups(grp)%tstat(2,prt) = particle_groups(grp)%tstat(2,prt) + dt
       ENDDO
