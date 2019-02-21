@@ -1316,13 +1316,13 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       !# do non-kinetic updates to BGC variables (eq equilibration)
       IF ( ThisStep >= n_equil_substep ) CALL Update(column, bot-top+1)
 
-      !# find the particles in this column and update particle bgc
-      IF (do_particle_bgc) CALL Particles(column, bot-top+1, all_particles(top:bot))
-
 #if _NO_ODE_
       !# for this column, do the main kinetic/bgc flux calculation
       !# (this includes water column, surface and benthic interfaces)
       CALL calculate_fluxes(column, bot-top+1, flux(:,top:bot), flux_atm, flux_ben, flux_rip, h(top:bot))
+
+      !# find the particles in this column and update particle bgc
+      IF (do_particle_bgc) CALL Particles(column, bot-top+1, all_particles(top:bot))
 
       !# now go forth and solve the ODE (Euler! - link to fv_ode would be nice)
       DO lev = top, bot
