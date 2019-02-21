@@ -5,7 +5,7 @@
 		<Platform Name="x64"/></Platforms>
 	<Configurations>
 		<Configuration Name="Debug|Win32" OutputDirectory="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" TargetName="tuflowfv_external_wq" ConfigurationType="typeDynamicLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" WarnInterfaces="true" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" Interfaces="true"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;EXTERNAL_WQ=2" WarnInterfaces="true" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" Interfaces="true"/>
 				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" IgnoreDefaultLibraryNames="LIBCMT" GenerateDebugInformation="true" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="libfvaed.lib libaed2+.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
@@ -15,7 +15,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="Release|Win32" OutputDirectory="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" TargetName="tuflowfv_external_wq" ConfigurationType="typeDynamicLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;EXTERNAL_WQ=2"/>
 				<Tool Name="VFLinkerTool" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="libfvaed.lib libaed2+.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
@@ -25,7 +25,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="Debug|x64" OutputDirectory="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" TargetName="tuflowfv_external_wq" ConfigurationType="typeDynamicLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1" WarnInterfaces="true" Traceback="true" BoundsCheck="true" Interfaces="true"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;EXTERNAL_WQ=2" WarnInterfaces="true" Traceback="true" BoundsCheck="true" Interfaces="true"/>
 				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" IgnoreDefaultLibraryNames="LIBCMTD" GenerateDebugInformation="true" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="libfvaed.lib libaed2+.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -35,7 +35,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="Release|x64" OutputDirectory="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" TargetName="tuflowfv_external_wq" ConfigurationType="typeDynamicLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;EXTERNAL_WQ=2"/>
 				<Tool Name="VFLinkerTool" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" IgnoreDefaultLibraryNames="LIBCMTD" SubSystem="subSystemWindows" LinkDLL="true" AdditionalDependencies="libfvaed.lib libaed2+.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -45,7 +45,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="VTUNE|Win32" OutputDirectory="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" TargetName="tuflowfv_external_wq" ConfigurationType="typeDynamicLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugLineInfoOnly" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugLineInfoOnly" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;EXTERNAL_WQ=2"/>
 				<Tool Name="VFLinkerTool" AdditionalOptions="/DLL" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" FixedBaseAddress="linkFixedBaseAddressNo" AdditionalDependencies="libfvaed.lib libaed2+.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
@@ -55,7 +55,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="VTUNE|x64" OutputDirectory="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" TargetName="tuflowfv_external_wq" ConfigurationType="typeDynamicLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugLineInfoOnly" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;LICENSE=1;SMS_DEMO_LICENSE=1;EXTERNAL_TURB=1;EXTERNAL_WQ=2;EXTERNAL_WAVE=1"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugLineInfoOnly" AdditionalIncludeDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" PreprocessorDefinitions="_PRECISION=1;EXTERNAL_WQ=2"/>
 				<Tool Name="VFLinkerTool" AdditionalOptions="/DLL" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)-$(ConfigurationName)" GenerateDebugInformation="true" FixedBaseAddress="linkFixedBaseAddressNo" AdditionalDependencies="libfvaed.lib libaed2+.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>

@@ -7,8 +7,6 @@ export EXTERNAL_LIBS=shared
 export SINGLE=false
 export PRECISION=1
 
-export FORTRAN_COMPILER=IFORT
-
 # The default is MacPorts : uncomment the next line if you use "homebrew"
 #export HOMEBREW=true
 

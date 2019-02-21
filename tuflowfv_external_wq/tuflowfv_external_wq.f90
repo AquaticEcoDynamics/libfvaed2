@@ -118,8 +118,8 @@ SUBROUTINE tuflowfv_init_extern_wq(nlog, wqDir, wqMod, Nwqvars, Nwqben, Nwqdiags
 
 ! BEGIN
   ! GET AED2 CONFIGURATION
-  WRITE(*,'(a\)') 'Configuring "AED2" external module... '
-  IF (openstat) WRITE(nlog,'(a\)') 'Configuring "AED2" external module... '
+  WRITE(*,'(a)', advance="no") 'Configuring "AED2" external module... '
+  IF (openstat) WRITE(nlog,'(a)', advance="no") 'Configuring "AED2" external module... '
 
   i = LEN_TRIM(wqDir)
   IF (i>0) THEN
