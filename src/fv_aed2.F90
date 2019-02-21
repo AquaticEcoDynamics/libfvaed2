@@ -43,6 +43,7 @@ MODULE fv_aed2
 !-------------------------------------------------------------------------------
    USE aed2_common
    USE fv_zones
+   USE ieee_arithmetic
 
    IMPLICIT NONE
 
@@ -1044,7 +1045,7 @@ SUBROUTINE check_states(column, top, bot)
             IF ( .NOT. (tv%diag .OR. tv%extern) ) THEN
                v = v + 1
                IF ( do_limiter ) THEN
-                  IF ( .NOT. isnan(min_(v)) ) THEN
+                  IF ( .NOT. ieee_is_nan(min_(v)) ) THEN
                      IF ( cc(v, lev) < min_(v) ) cc(v, lev) = min_(v)
                   ELSE IF (.NOT. no_glob_lim) THEN
                      IF ( cc(v, lev) < glob_min ) THEN
@@ -1052,7 +1053,7 @@ SUBROUTINE check_states(column, top, bot)
                         print*, "Variable ", v, " below glob_min"
                      ENDIF
                   ENDIF
-                  IF ( .NOT. isnan(max_(v)) ) THEN
+                  IF ( .NOT. ieee_is_nan(max_(v)) ) THEN
                      IF ( cc(v, lev) > max_(v) ) cc(v, lev) = max_(v)
                   ELSE IF (.NOT. no_glob_lim) THEN
                      IF ( cc(v, lev) > glob_max ) THEN
@@ -1229,7 +1230,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
             IF ( .NOT. (tv%sheet .OR. tv%diag .OR. tv%extern) ) THEN
                v = v + 1
                ! only for state_vars that are not sheet
-               IF ( .NOT. isnan(tv%mobility) ) THEN
+               IF ( .NOT. ieee_is_nan(tv%mobility) ) THEN
                   ! default to ws that was set during initialisation
                   ws(top:bot,i) = tv%mobility
                ELSE
@@ -1330,7 +1331,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
             cc(i,lev)=cc(i,lev)+dt*flux(i,lev)
 #if DEBUG>1
             !# check for NaNs
-            IF ( isnan(cc(i,lev)) ) THEN
+            IF ( ieee_is_nan(cc(i,lev)) ) THEN
                print*,'Nan at i = ', i, ' lev = ', lev
                print*,'h(lev) = ', h(lev), ' flux(i,lev) = ', flux(i,lev)
                print*,'Top of column @ ', top, ' bottom of column @ ', bot
@@ -1351,7 +1352,7 @@ SUBROUTINE do_aed2_models(nCells, nCols)
             cc(i,bot)=cc(i,bot)+dt*flux(i,bot)
 #if DEBUG>1
             !# check for NaNs
-            IF ( isnan(cc(i,bot)) ) THEN
+            IF ( ieee_is_nan(cc(i,bot)) ) THEN
                print*,'Nan at i = ', i, ' bot = ', bot
                print*,'h(bot) = ', h(bot), ' flux(i,bot) = ', flux(i,bot)
                call STOPIT('NaN value')
