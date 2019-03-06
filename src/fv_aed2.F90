@@ -1676,7 +1676,8 @@ SUBROUTINE Particles(column, count, parts)
    INTEGER,  INTENT(in)    :: count
 !
 !LOCAL VARIABLES:
-   INTEGER :: ppid, lev, grp, prt, n, pt, NU
+   INTEGER :: lev, grp, prt, n, pt, NU
+   INTEGER :: ppid
    AED_REAL,DIMENSION(20) :: zz
    INTEGER :: stat, idxi3
 !
@@ -1688,7 +1689,7 @@ SUBROUTINE Particles(column, count, parts)
    DO lev=1,count
 
       ppid = 0          ! new cell identifier, to allow cumulation of prts
-      print *,'--'
+
       DO pt=1,parts(lev)%count
 
          grp = parts(lev)%prt(pt)%grp ; prt = parts(lev)%prt(pt)%idx
@@ -1724,7 +1725,6 @@ SUBROUTINE Particles(column, count, parts)
             zz(19) = particle_groups(grp)%istat(stat, prt)    !Status
 
             CALL aed2_particle_bgc(column,lev,ppid,zz)     !ppid getting incremeted in here
-            print *,'>',ppid
 
            !particle_groups(grp)%prop(1:n,prt) = zz(1:n)
             particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)   = zz(1)
