@@ -1684,20 +1684,24 @@ SUBROUTINE Particles(column, count, parts)
 !BEGIN
    IF (.NOT. ASSOCIATED(particle_groups) .OR. num_groups == 0) RETURN
    zz = zero_
-   ppid = 0
 
    DO lev=1,count
-!print*,"Particles lev = ", lev,parts(lev)%count
+
+      ppid = 0          ! new cell identifier, to allow cumulation of prts
+
       DO pt=1,parts(lev)%count
+
          grp = parts(lev)%prt(pt)%grp ; prt = parts(lev)%prt(pt)%idx
          stat = particle_groups(grp)%id_stat   ! should be 1
          idxi3 =  particle_groups(grp)%id_i3   ! should be 3
+
          IF ( particle_groups(grp)%istat(stat, prt) >= 0 ) THEN
+
+
             NU = ubound(particle_groups(grp)%U, 1)
             n = min(16, size(particle_groups(grp)%prop(:,prt)))
 
-!           zz(1:n) = particle_groups(grp)%prop(1:n,prt)
-
+          ! zz(1:n) = particle_groups(grp)%prop(1:n,prt)
             zz(1)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)
             zz(2)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+1, prt)
             zz(3)  = particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+2, prt)
@@ -1710,19 +1714,18 @@ SUBROUTINE Particles(column, count, parts)
             zz(10) = particle_groups(grp)%prop(particle_groups(grp)%id_nu+3, prt)
             zz(11) = particle_groups(grp)%prop(particle_groups(grp)%id_wsel, prt)
             zz(12) = particle_groups(grp)%prop(particle_groups(grp)%id_watd, prt)
-            zz(13) = particle_groups(grp)%prop(particle_groups(grp)%id_partd, prt) ! probably settling velocity
-            zz(14) = particle_groups(grp)%prop(particle_groups(grp)%id_wnd, prt)
+            zz(13) = particle_groups(grp)%prop(particle_groups(grp)%id_partd, prt)
+            zz(14) = particle_groups(grp)%prop(particle_groups(grp)%id_wnd, prt) !Vvel
 
-            IF (NU > 0) zz(15) = particle_groups(grp)%U(1, prt)  ! I think this is mass
+            IF (NU > 0) zz(15) = particle_groups(grp)%U(1, prt)  !Mass
             IF (NU > 1) zz(16) = particle_groups(grp)%U(2, prt)
 
-            zz(17:18) = particle_groups(grp)%tstat(1:2,prt)
-            zz(19) = particle_groups(grp)%istat(stat, prt)
+            zz(17:18) = particle_groups(grp)%tstat(1:2,prt)   !Birth and Age
+            zz(19) = particle_groups(grp)%istat(stat, prt)    !Status
 
-            CALL aed2_particle_bgc(column,lev,ppid,zz)
+            CALL aed2_particle_bgc(column,lev,ppid,zz)     !ppid getting incremeted in here
 
-!           particle_groups(grp)%prop(1:n,prt) = zz(1:n)
-
+           !particle_groups(grp)%prop(1:n,prt) = zz(1:n)
             particle_groups(grp)%prop(particle_groups(grp)%id_uvw0, prt)   = zz(1)
             particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+1, prt) = zz(2)
             particle_groups(grp)%prop(particle_groups(grp)%id_uvw0+2, prt) = zz(3)
@@ -1738,7 +1741,7 @@ SUBROUTINE Particles(column, count, parts)
             particle_groups(grp)%prop(particle_groups(grp)%id_partd, prt)  = zz(13)
             particle_groups(grp)%prop(particle_groups(grp)%id_wnd, prt)    = zz(14)
 
-            IF (NU > 0) particle_groups(grp)%U(1, prt) = zz(15)  ! I think this is mass
+            IF (NU > 0) particle_groups(grp)%U(1, prt) = zz(15)
             IF (NU > 1) particle_groups(grp)%U(2, prt) = zz(16)
             particle_groups(grp)%istat(stat, prt) = zz(19)
          ENDIF
