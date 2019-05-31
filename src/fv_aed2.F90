@@ -31,12 +31,11 @@
 
 #include "aed2.h"
 
-#define FV_AED_VERS "1.0.1ptm4"
+#define FV_AED_VERS "1.0.2"
 
 #ifndef DEBUG
 #define DEBUG      0
 #endif
-#define _NO_ODE_   1
 
 !###############################################################################
 MODULE fv_aed2
@@ -423,12 +422,11 @@ SUBROUTINE init_var_aed2_models(nCells, cc_, cc_diag_, nwq, nwqben, sm, bm)
    IF ( route_table_file /= '' ) CALL load_route_table(ubound(bm, 1))
 
    ALLOCATE(flux(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux)'
-#if !_NO_ODE_
-   ALLOCATE(flux2(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux2)'
-   ALLOCATE(flux3(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux3)'
-   ALLOCATE(flux4(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux4)'
-   ALLOCATE(cc1(n_vars, nCells),stat=rc)   ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (cc1)'
-#endif
+
+!  ALLOCATE(flux2(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux2)'
+!  ALLOCATE(flux3(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux3)'
+!  ALLOCATE(flux4(n_vars, nCells),stat=rc) ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (flux4)'
+!  ALLOCATE(cc1(n_vars, nCells),stat=rc)   ; IF (rc /= 0) STOP 'allocate_memory(): ERROR allocating (cc1)'
 !
 !-------------------------------------------------------------------------------
 CONTAINS
@@ -1317,7 +1315,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
       !# do non-kinetic updates to BGC variables (eq equilibration)
       IF ( ThisStep >= n_equil_substep ) CALL Update(column, bot-top+1)
 
-#if _NO_ODE_
       !# for this column, do the main kinetic/bgc flux calculation
       !# (this includes water column, surface and benthic interfaces)
       CALL calculate_fluxes(column, bot-top+1, flux(:,top:bot), flux_atm, flux_ben, flux_rip, h(top:bot))
@@ -1360,7 +1357,6 @@ SUBROUTINE do_aed2_models(nCells, nCols)
 #endif
          ENDDO ! ben vars
       ENDIF
-#endif
 
 
       !# now the bgc updates are complete, update links to host model
