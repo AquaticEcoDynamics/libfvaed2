@@ -4,7 +4,11 @@ if [ "$FV_CONFIGURED" != "true" ] ; then
   . ./FV_CONFIG
 fi
 
-if [ "$FORTRAN_COMPILER" = "IFORT" ] ; then
+if [ "$FC" = "" ] ; then
+  export FC=ifort
+fi
+
+if [ "$FC" = "ifort" ] ; then
   if [ -d /opt/intel/bin ] ; then
     . /opt/intel/bin/compilervars.sh intel64
   fi
@@ -19,17 +23,14 @@ if [ "$AED2DIR" = "" ] ; then
   export AED2DIR=../libaed2
 fi
 
-if [ "$DEBUG" = "" ] ; then
-   export DEBUG=true
-fi
 if [ "$PRECISION" = "" ] ; then
-   export PRECISION=1
+  export PRECISION=1
 fi
 if [ "$EXTERNAL_LIBS" = "" ] ; then
   export EXTERNAL_LIBS=shared
 fi
-if [ "$FC" = "" ] ; then
-  export FC=ifort
+if [ "$DEBUG" = "" ] ; then
+  export DEBUG=false
 fi
 
 export F77=$FC

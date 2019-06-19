@@ -29,6 +29,7 @@ INCLUDE 'COMPILER_DIRECTIVES.FI'
 !DEC$ END IF
 
 ! MODULE TYPE DEFINITIONS
+
 ! WQ TYPE
 TYPE :: fvwq
     LOGICAL :: init = .FALSE.                                   ! WQ INITIALISED
@@ -36,8 +37,8 @@ TYPE :: fvwq
     INTEGER :: typ                                              ! WQ MODEL ID
     CHARACTER(LEN=30) :: model                                  ! WQ MODEL DESCRIPTION
     LOGICAL :: updated                                          ! UPDATED STATUS
-    REAL(wqdk) :: dt_update                               ! UPDATE TIMESTEP
-    REAL(wqdk) :: t_update                                ! NEXT UPDATE TIME
+    REAL(wqdk) :: dt_update                                     ! UPDATE TIMESTEP
+    REAL(wqdk) :: t_update                                      ! NEXT UPDATE TIME
     INTEGER :: NC2                                              ! NUMBER OF 2D CELLS
     INTEGER :: NC3                                              ! NUMBER OF 3D CELLS
     INTEGER :: Nwq                                              ! NUMBER OF WQ CONSTITUENTS
@@ -46,10 +47,10 @@ TYPE :: fvwq
     CHARACTER(LEN=30),ALLOCATABLE,DIMENSION(:) :: names         ! WQ PELAGIC CONSTITUENT NAMES
     CHARACTER(LEN=30),ALLOCATABLE,DIMENSION(:) :: ben_names     ! WQ BENTHIC CONSTITUENT NAMES
     CHARACTER(LEN=30),ALLOCATABLE,DIMENSION(:) :: diag_names    ! WQ DIAGNOSTIC VARIABLE NAMES
-    INTEGER,POINTER,DIMENSION(:) :: surf_map                    ! SURFACE CELL MAP (NC2)
-    INTEGER,POINTER,DIMENSION(:) :: benth_map                   ! BOTTOM/BENTHIC LAYER MAP (NC2)
-    INTEGER,POINTER,DIMENSION(:) :: NL                          ! NUMBER OF LAYERS (NC2)
-    INTEGER,POINTER,DIMENSION(:,:) :: mat_id                    ! MATERIAL ID (NMG,NC2)
+    INTEGER,POINTER,DIMENSION(:) :: surf_map                ! SURFACE CELL MAP (NC2)
+    INTEGER,POINTER,DIMENSION(:) :: benth_map               ! BOTTOM/BENTHIC LAYER MAP (NC2)
+    INTEGER,POINTER,DIMENSION(:) :: NL                      ! NUMBER OF LAYERS (NC2)
+    INTEGER,POINTER,DIMENSION(:,:) :: mat_id                ! MATERIAL ID (NMG,NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: thick                ! CELL THICKNESS (NC3)
     REAL(wqrk),POINTER,DIMENSION(:) :: depth                ! LOCAL MID-CELL DEPTH (NC3)
     REAL(wqrk),POINTER,DIMENSION(:,:) :: dcdt               ! TEMPORAL DERIVATIVE OF WQ CONSTITUENTS (NWQ,NC3)
@@ -57,6 +58,7 @@ TYPE :: fvwq
     REAL(wqrk),POINTER,DIMENSION(:) :: temp                 ! TEMPERATURE POINTER (NC3)
     REAL(wqrk),POINTER,DIMENSION(:) :: tss                  ! TOTAL SUSPENDED SOLIDS POINTER (NC3)
     REAL(wqrk),POINTER,DIMENSION(:) :: vvel                 ! VERTICAL VELOCITIES (NC3)
+    REAL(wqrk),POINTER,DIMENSION(:) :: cvel                 ! CELL VELOCITIES (NC3)
     REAL(wqrk),POINTER,DIMENSION(:,:) :: par                ! NET SHORTWAVE RADIATION (NC3)
     REAL(wqrk),POINTER,DIMENSION(:,:) :: cc                 ! WQ CONSTITUENT CONCENTRATIONS (NWQ,NC3)
     REAL(wqrk),POINTER,DIMENSION(:,:) :: diag               ! DIAGNOSTIC WQ VARIABLES (NDIAG,NC3)
@@ -67,7 +69,7 @@ TYPE :: fvwq
     REAL(wqrk),POINTER,DIMENSION(:) :: ustar_bed            ! BED FRICTION VELOCITY (NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: ustar_surf           ! SURFACE FRICTION VELOCITY (NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: air_temp             ! AIR TEMPERATURE (NC2)
-    REAL(wqrk),POINTER,DIMENSION(:) :: wv_uorb              !
+    REAL(wqrk),POINTER,DIMENSION(:) :: wv_uorb              ! Wave Stress ?
     REAL(wqrk),POINTER,DIMENSION(:) :: wv_t                 !
     ! Arrays that control feedbacks between the models
     REAL(wqrk),POINTER,DIMENSION(:) :: bioshade             ! BIOGEOCHEMICAL LIGHT EXTINCTION COEFFICIENT RETURNED FROM WQ (NC3)
@@ -75,9 +77,12 @@ TYPE :: fvwq
     REAL(wqrk),POINTER,DIMENSION(:) :: solarshade           ! REDUCTION OF SOLAR RADIATION DUE TO SHADING RETURNED FROM WQ (NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: rainloss             ! LOSS OF RAINFALL INTO EXPOSED SEDIMENT RETURNED FROM WQ (NC2)
     ! Variables required for AED2 dry cell models
-    LOGICAL,POINTER,DIMENSION(:) :: active                      ! COLUMN ACTIVE STATUS (NC2)
+    LOGICAL,POINTER,DIMENSION(:) :: active                  ! COLUMN ACTIVE STATUS (NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: area                 ! CELL AREA (NC2)
     REAL(wqrk),POINTER,DIMENSION(:) :: bathy                ! HEIGHT OF COLUMN BOTTOM (NC2)
+    ! Variables related to particle tracking
+    INTEGER :: NG                                           ! Number of Particle Groups
+    TYPE(partgroup),DIMENSION(:),ALLOCATABLE :: parts       ! Particle groups
 END TYPE
 
 ! MODULE OBJECTS
@@ -113,8 +118,8 @@ SUBROUTINE tuflowfv_init_extern_wq(nlog, wqDir, wqMod, Nwqvars, Nwqben, Nwqdiags
 
 ! BEGIN
   ! GET AED2 CONFIGURATION
-  WRITE(*,'(a\)') 'Configuring "AED2" external module... '
-  IF (openstat) WRITE(nlog,'(a\)') 'Configuring "AED2" external module... '
+  WRITE(*,'(a)', advance="no") 'Configuring "AED2" external module... '
+  IF (openstat) WRITE(nlog,'(a)', advance="no") 'Configuring "AED2" external module... '
 
   i = LEN_TRIM(wqDir)
   IF (i>0) THEN
@@ -176,6 +181,8 @@ SUBROUTINE tuflowfv_construct_extern_wq(nlog)
                             wq%thick,           &
                             wq%tss,             &
                             wq%par,             &
+                            wq%vvel,            &
+                            wq%cvel,            &
                             ! 3D feedback arrays
                             wq%bioshade,        &
                             ! 2D env variables
@@ -214,6 +221,8 @@ SUBROUTINE tuflowfv_do_extern_wq(nlog)
 ! LOCAL VARIABLES
   CHARACTER(LEN=30) :: sub = 'tuflowfv_do_extern_wq'
   LOGICAL :: openstat
+!
+!BEGIN
 
   INQUIRE(UNIT=nlog,OPENED=openstat)
 
@@ -225,11 +234,13 @@ SUBROUTINE tuflowfv_do_extern_wq(nlog)
      STOP
   ENDIF
 
-! BEGIN
-  CALL do_aed2_models(wq%nc3,wq%nc2)
+  IF (do_particle_bgc) CALL set_env_particles(wq%NG,wq%parts)
 
+  CALL do_aed2_models(wq%nc3,wq%nc2)
 END SUBROUTINE tuflowfv_do_extern_wq
+
 !******************************************************************************
+
 SUBROUTINE tuflowfv_destruct_extern_wq(nlog)
 !DEC$ ATTRIBUTES DLLEXPORT :: tuflowfv_destruct_extern_wq
   IMPLICIT NONE

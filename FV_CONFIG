@@ -4,23 +4,16 @@
 
 export AED2=true
 export EXTERNAL_LIBS=shared
-#export EXTERNAL_LIBS=static
 export SINGLE=false
-#export SINGLE=true
 export PRECISION=1
-#export PRECISION=2
-
-export FORTRAN_COMPILER=IFORT
 
 # The default is MacPorts : uncomment the next line if you use "homebrew"
 #export HOMEBREW=true
 
 export CURDIR=`pwd`
 
-export GOTMDIR=${CURDIR}/../gotm-git
-export PLOTDIR=${CURDIR}/../libplot
 export FVAED2DIR=${CURDIR}
 export AED2DIR=${CURDIR}/../libaed2
-#export AED2PLS=${CURDIR}/../libaed2-plus
+export AED2PLS=${CURDIR}/../libaed2-plus
 
 export FV_CONFIGURED=true

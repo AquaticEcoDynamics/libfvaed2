@@ -6,7 +6,7 @@
 objdir=obj
 srcdir=src
 libdir=lib
-VERS=2.0.0dev
+VERS=2.0.1ptm
 
 OSTYPE=$(shell uname -s)
 
@@ -34,7 +34,7 @@ ifeq ($(F90),ifort)
   INCLUDES+=-I/opt/intel/include
   DEBUG_FFLAGS=-g -traceback
   OPT_FFLAGS=-O3 -openmp
-  FFLAGS=-warn all -module ${moddir} -i-static -mp1 -warn nounused $(DEFINES)
+  FFLAGS=-fpp -warn all -module ${moddir} -i-static -mp1 -warn nounused $(DEFINES)
   ifeq ($(WITH_CHECKS),true)
     FFLAGS+=-check
   endif
